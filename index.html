@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexocorp - Registro ERI</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS para procesamiento de Excel/CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#0b0f19',
+              card: '#111827',
+              border: '#1f2937',
+              violet: '#7c3aed',
+              cyan: '#06b6d4',
+              blue: '#2563eb',
+              pink: '#ec4899',
+              accent: '#8b5cf6'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #080c14;
+      color: #f3f4f6;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .glow-card {
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glow-card:hover {
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.15);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0d1322;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #1f2937;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #374151;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col custom-scrollbar">
+
+  <!-- HEADER CORPORATIVO -->
+  <header class="bg-gradient-to-r from-gray-900 via-purple-950 to-gray-900 border-b border-gray-800 px-6 py-4 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white font-black text-xl shadow-lg">
+          N
+        </div>
+        <div>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-white via-gray-200 to-cyan-400 bg-clip-text text-transparent">
+            NEXOCORP - Registro ERI
+          </h1>
+          <p class="text-xs text-gray-400">Sistema Integrado de Control de Inventarios & Análisis Operativo</p>
+        </div>
+      </div>
+
+      <!-- STATUS BAR & SUPABASE BADGE -->
+      <div class="flex items-center space-x-4 text-xs">
+        <div id="connectionStatus" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
+          <span class="w-2 h-2 rounded-full bg-yellow-400 animate-ping"></span>
+          <span id="statusText">Modo Nube / Verificando Supabase...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVEGACIÓN PRINCIPAL -->
+  <nav class="bg-gray-900/80 backdrop-blur border-b border-gray-800 px-6">
+    <div class="max-w-7xl mx-auto flex overflow-x-auto space-x-2 py-2">
+      <button onclick="tabSwitch('carga')" id="tab-carga" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all bg-violet-600 text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        Carga de Bases de Datos
+      </button>
+      <button onclick="tabSwitch('registro')" id="tab-registro" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all text-gray-400 hover:text-white hover:bg-gray-800">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Planilla de Registro
+      </button>
+      <button onclick="tabSwitch('historial')" id="tab-historial" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all text-gray-400 hover:text-white hover:bg-gray-800">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Historial
+      </button>
+      <button onclick="tabSwitch('dashboard')" id="tab-dashboard" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all text-gray-400 hover:text-white hover:bg-gray-800">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Dashboard
+      </button>
+      <button onclick="tabSwitch('config')" id="tab-config" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all text-gray-400 hover:text-white hover:bg-gray-800 ml-auto">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+        Configuración Supabase
+      </button>
+    </div>
+  </nav>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+    <!-- BARRA DE PROGRESO GLOBAL -->
+    <div id="progressContainer" class="hidden glow-card bg-gray-900 p-4 rounded-xl border border-cyan-500/30">
+      <div class="flex justify-between items-center mb-2">
+        <span id="progressStatus" class="text-sm font-semibold text-cyan-400 animate-pulse">Sincronizando con Supabase Cloud (Lotes de 500)...</span>
+        <span id="progressPercent" class="text-sm font-bold text-cyan-300">0%</span>
+      </div>
+      <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+        <div id="progressBar" class="bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 h-3 rounded-full transition-all duration-300 w-0"></div>
+      </div>
+      <div class="flex justify-between items-center mt-2 text-xs text-gray-400">
+        <span id="progressCounter">Procesados: 0 de 0 filas</span>
+        <span id="batchInfo">Lote 0 / 0</span>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 1: CARGA DE BASES DE DATOS -->
+    <section id="section-carga" class="tab-content space-y-6">
+      <div class="glow-card bg-gradient-to-br from-gray-900 to-purple-950/40 p-6 rounded-2xl border border-gray-800">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Carga Masiva a Supabase Cloud (Lotes de 500)
+        </h2>
+        <p class="text-sm text-gray-400 mt-1">
+          Cargue archivos Excel o CSV. Los registros se almacenan directamente en la nube de Supabase conservando la información acumulada de días anteriores.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- CARD BD COSTOS -->
+        <div class="glow-card bg-gray-900/90 p-5 rounded-xl border border-violet-500/30 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-bold text-violet-400 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                BD COSTOS
+              </h3>
+              <span id="count-costos" class="text-xs bg-violet-500/20 text-violet-300 px-2.5 py-1 rounded-full border border-violet-500/30 font-mono">Consultando...</span>
+            </div>
+            <p class="text-xs text-gray-400 mb-4">Columnas: <span class="text-gray-300 font-mono">codigo, descripcion, unidad_medida, costo_unitario</span></p>
+
+            <label class="block border-2 border-dashed border-violet-500/30 hover:border-violet-400 rounded-lg p-4 text-center cursor-pointer transition bg-violet-950/10">
+              <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileUpload(event, 'bd_costos')">
+              <svg class="w-8 h-8 mx-auto text-violet-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <span class="text-xs text-gray-300 font-semibold">Seleccionar Excel / CSV</span>
+            </label>
+          </div>
+          <div class="flex justify-between items-center text-xs pt-2 border-t border-gray-800">
+            <button onclick="downloadTemplate('costos')" class="text-gray-400 hover:text-cyan-400 underline">Plantilla</button>
+            <button onclick="loadDemoData('bd_costos')" class="text-violet-400 hover:text-violet-300 font-semibold">⚡ Demo 500</button>
+          </div>
+        </div>
+
+        <!-- CARD BD CARGA PICKING -->
+        <div class="glow-card bg-gray-900/90 p-5 rounded-xl border border-purple-500/30 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-bold text-purple-400 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                BD CARGA PICKING
+              </h3>
+              <span id="count-picking" class="text-xs bg-purple-500/20 text-purple-300 px-2.5 py-1 rounded-full border border-purple-500/30 font-mono">Consultando...</span>
+            </div>
+            <p class="text-xs text-gray-400 mb-4">Columnas: <span class="text-gray-300 font-mono">codigo, nro_carga, nro_lpn, descripcion, cantidad_enviada, bodega, ubicacion_picking, usuario_picking, fecha_picking</span></p>
+
+            <label class="block border-2 border-dashed border-purple-500/30 hover:border-purple-400 rounded-lg p-4 text-center cursor-pointer transition bg-purple-950/10">
+              <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileUpload(event, 'bd_carga_picking')">
+              <svg class="w-8 h-8 mx-auto text-purple-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+              <span class="text-xs text-gray-300 font-semibold">Seleccionar Excel / CSV</span>
+            </label>
+          </div>
+          <div class="flex justify-between items-center text-xs pt-2 border-t border-gray-800">
+            <button onclick="downloadTemplate('picking')" class="text-gray-400 hover:text-cyan-400 underline">Plantilla</button>
+            <button onclick="loadDemoData('bd_carga_picking')" class="text-purple-400 hover:text-purple-300 font-semibold">⚡ Demo 500</button>
+          </div>
+        </div>
+
+        <!-- CARD BD DIRCA -->
+        <div class="glow-card bg-gray-900/90 p-5 rounded-xl border border-amber-500/30 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-bold text-amber-400 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                BD DIRCA
+              </h3>
+              <span id="count-dirca" class="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/30 font-mono">Consultando...</span>
+            </div>
+            <p class="text-xs text-gray-400 mb-4">Columnas: <span class="text-gray-300 font-mono">codigo, nro_carga, cantidad_diferencia, tipo_diferencia, nro_dirca</span></p>
+
+            <label class="block border-2 border-dashed border-amber-500/30 hover:border-amber-400 rounded-lg p-4 text-center cursor-pointer transition bg-amber-950/10">
+              <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileUpload(event, 'bd_dirca')">
+              <svg class="w-8 h-8 mx-auto text-amber-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <span class="text-xs text-gray-300 font-semibold">Seleccionar Excel / CSV</span>
+            </label>
+          </div>
+          <div class="flex justify-between items-center text-xs pt-2 border-t border-gray-800">
+            <button onclick="downloadTemplate('dirca')" class="text-gray-400 hover:text-cyan-400 underline">Plantilla</button>
+            <button onclick="loadDemoData('bd_dirca')" class="text-amber-400 hover:text-amber-300 font-semibold">⚡ Demo 500</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- PESTAÑA 2: PLANILLA DE REGISTRO -->
+    <section id="section-registro" class="tab-content hidden space-y-6">
+      <div class="glow-card bg-gray-900 p-6 rounded-2xl border border-gray-800">
+        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          Ingreso de Registro ERI
+        </h2>
+
+        <!-- BÚSQUEDA / ENTRADA PRINCIPAL -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-950 border border-violet-500/20 mb-6">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">CÓDIGO DE PRODUCTO *</label>
+            <input type="text" id="reg_codigo" oninput="autoCompletarFormulario()" placeholder="Ej: PROD-1001" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">NRO DE CARGA O NRO LPN *</label>
+            <input type="text" id="reg_carga_lpn" oninput="autoCompletarFormulario()" placeholder="Ej: CRG-8801 o LPN-9001" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 font-mono">
+          </div>
+        </div>
+
+        <!-- FORMULARIO AUTOCOMPLETADO -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Fecha Registro</label>
+            <input type="text" id="reg_fecha_registro" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-400 font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Descripción Producto</label>
+            <input type="text" id="reg_descripcion" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Cantidad Enviada</label>
+            <input type="text" id="reg_cantidad_enviada" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+          </div>
+
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Bodega</label>
+            <input type="text" id="reg_bodega" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Ubicación Picking</label>
+            <input type="text" id="reg_ubicacion_picking" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Usuario Picking</label>
+            <input type="text" id="reg_usuario_picking" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
+          </div>
+
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Fecha Picking</label>
+            <input type="text" id="reg_fecha_picking" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Nro DIRCA</label>
+            <input type="text" id="reg_nro_dirca" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Tipo Diferencia</label>
+            <input type="text" id="reg_tipo_diferencia" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
+          </div>
+
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Cantidad Diferencia</label>
+            <input type="text" id="reg_cantidad_diferencia" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Costo Unitario ($)</label>
+            <input type="text" id="reg_costo_unitario" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Costo Total ($)</label>
+            <input type="text" id="reg_costo_total" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-cyan-400 font-bold font-mono">
+          </div>
+
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Rechazo por Fecha (&gt;45 días)</label>
+            <div id="reg_rechazo_badge" class="px-3 py-2 rounded-lg text-xs font-bold bg-gray-800 text-gray-400 border border-gray-700 text-center">
+              Pendiente
+            </div>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-violet-400 mb-1">¿ERROR PICKING? *</label>
+            <select id="reg_error_picking" class="w-full bg-gray-900 border-2 border-violet-500 rounded-lg px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-cyan-400">
+              <option value="">-- Seleccionar Opción --</option>
+              <option value="SI">SI (Es Error de Picking)</option>
+              <option value="NO">NO (No es Error de Picking)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-4">
+          <button onclick="limpiarFormularioRegistro()" class="px-5 py-2.5 rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 text-sm font-semibold">
+            Limpiar
+          </button>
+          <button onclick="guardarRegistroERI()" class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 text-white text-sm font-bold shadow-lg flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Guardar Registro
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 3: HISTORIAL -->
+    <section id="section-historial" class="tab-content hidden space-y-6">
+      <div class="glow-card bg-gray-900 p-6 rounded-2xl border border-gray-800">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            Historial de Registros ERI (Supabase Cloud)
+          </h2>
+          <button onclick="exportarExcelHistorial()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Exportar a Excel
+          </button>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl bg-gray-950 border border-gray-800 mb-6">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Buscar por Código / DIRCA</label>
+            <input type="text" id="filter_search" oninput="aplicarFiltrosHistorial()" placeholder="Ej: PROD-1001 o DIRCA-001" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Fecha Desde (Registro)</label>
+            <input type="date" id="filter_fecha_desde" onchange="aplicarFiltrosHistorial()" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Fecha Hasta (Registro)</label>
+            <input type="date" id="filter_fecha_hasta" onchange="aplicarFiltrosHistorial()" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white">
+          </div>
+          <div class="flex items-end">
+            <button onclick="limpiarFiltrosHistorial()" class="w-full py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold">
+              Limpiar Filtros
+            </button>
+          </div>
+        </div>
+
+        <!-- TABLA HISTORIAL -->
+        <div class="overflow-x-auto rounded-xl border border-gray-800 max-h-[500px]">
+          <table class="w-full text-left text-xs text-gray-300">
+            <thead class="bg-gray-950 text-gray-400 uppercase font-semibold sticky top-0 border-b border-gray-800">
+              <tr>
+                <th class="p-3">Fecha Reg.</th>
+                <th class="p-3">Código</th>
+                <th class="p-3">Carga / LPN</th>
+                <th class="p-3">Bodega</th>
+                <th class="p-3">Ubicación</th>
+                <th class="p-3">Usuario</th>
+                <th class="p-3">Nro DIRCA</th>
+                <th class="p-3">Tipo Dif.</th>
+                <th class="p-3 text-right">Cant. Dif.</th>
+                <th class="p-3 text-right">Costo Total ($)</th>
+                <th class="p-3 text-center">Rechazo</th>
+                <th class="p-3 text-center">Error PCK</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-historial" class="divide-y divide-gray-800">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 4: DASHBOARD -->
+    <section id="section-dashboard" class="tab-content hidden space-y-6">
+      
+      <!-- CONTROLES DEL DASHBOARD -->
+      <div class="glow-card bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Dashboard & Métricas ERI
+        </h2>
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-gray-400">Filtrar Mes:</label>
+          <select id="dash_filter_month" onchange="renderDashboardCharts()" class="bg-gray-950 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white">
+            <option value="ALL">Todos los Meses</option>
+          </select>
+
+          <label class="text-xs text-gray-400 ml-2">Error Picking:</label>
+          <select id="dash_filter_error" onchange="renderDashboardCharts()" class="bg-gray-950 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white">
+            <option value="ALL">Todos (SI / NO)</option>
+            <option value="SI">Solo SI</option>
+            <option value="NO">Solo NO</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- CARDS METRICAS (KPI) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glow-card bg-gray-900 p-5 rounded-xl border border-violet-500/30">
+          <p class="text-xs text-gray-400 font-semibold uppercase">Total Registros</p>
+          <p id="kpi-total-registros" class="text-2xl font-black text-white mt-1">0</p>
+        </div>
+        <div class="glow-card bg-gray-900 p-5 rounded-xl border border-emerald-500/30">
+          <p class="text-xs text-gray-400 font-semibold uppercase">Costo Sobrantes ($)</p>
+          <p id="kpi-costo-sobrantes" class="text-2xl font-black text-emerald-400 mt-1">$0.00</p>
+        </div>
+        <div class="glow-card bg-gray-900 p-5 rounded-xl border border-rose-500/30">
+          <p class="text-xs text-gray-400 font-semibold uppercase">Costo Faltantes ($)</p>
+          <p id="kpi-costo-faltantes" class="text-2xl font-black text-rose-400 mt-1">$0.00</p>
+        </div>
+        <div class="glow-card bg-gray-900 p-5 rounded-xl border border-cyan-500/30">
+          <p class="text-xs text-gray-400 font-semibold uppercase">Impacto Neto ($)</p>
+          <p id="kpi-impacto-neto" class="text-2xl font-black text-cyan-400 mt-1">$0.00</p>
+        </div>
+      </div>
+
+      <!-- GRAFICAS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Grafica 1 -->
+        <div class="glow-card bg-gray-900 p-5 rounded-xl border border-gray-800">
+          <h3 class="text-xs font-bold text-gray-300 uppercase mb-4">1. Top Errores Picking / Usuario Picking</h3>
+          <div class="h-64"><canvas id="chart1"></canvas></div>
+        </div>
+
+        <!-- Grafica 2 -->
+        <div class="glow-card bg-gray-900 p-5 rounded-xl border border-gray-800">
+          <h3 class="text-xs font-bold text-gray-300 uppercase mb-4">2. Consolidado Registros por Bodega</h3>
+          <div class="h-64"><canvas id="chart2"></canvas></div>
+        </div>
+
+        <!-- Grafica 3 -->
+        <div class="glow-card bg-gray-900 p-5 rounded-xl border border-gray-800">
+          <h3 class="text-xs font-bold text-gray-300 uppercase mb-4">3. Incidencia por Prefijo Ubicación Picking</h3>
+          <div class="h-64"><canvas id="chart3"></canvas></div>
+        </div>
+
+        <!-- Grafica 4 -->
+        <div class="glow-card bg-gray-900 p-5 rounded-xl border border-gray-800">
+          <h3 class="text-xs font-bold text-gray-300 uppercase mb-4">4. Top Productos con Mayor Incidencia</h3>
+          <div class="h-64"><canvas id="chart4"></canvas></div>
+        </div>
+
+      </div>
+
+      <!-- Grafica 5 (Ancho completo) -->
+      <div class="glow-card bg-gray-900 p-5 rounded-xl border border-gray-800">
+        <h3 class="text-xs font-bold text-gray-300 uppercase mb-4">5. Volumen Mensual: Registros Totales vs Cantidad Errores Usuarios</h3>
+        <div class="h-72"><canvas id="chart5"></canvas></div>
+      </div>
+
+    </section>
+
+    <!-- PESTAÑA 5: CONFIGURACIÓN SUPABASE -->
+    <section id="section-config" class="tab-content hidden space-y-6">
+      <div class="glow-card bg-gray-900 p-6 rounded-2xl border border-gray-800">
+        <h2 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+          <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+          Conexión a Supabase Cloud
+        </h2>
+        <p class="text-sm text-gray-400 mb-6">
+          Ingrese las credenciales de Supabase. Al guardar, quedarán configuradas para cualquier usuario que visite el sitio desplegado en Netlify / Vercel.
+        </p>
+
+        <div class="space-y-4 max-w-2xl">
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">PROJECT URL SUPABASE</label>
+            <input type="text" id="cfg_url" placeholder="https://xyz.supabase.co" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">ANON API KEY</label>
+            <input type="password" id="cfg_key" placeholder="eyJhbGciOiJIUzI1NiI..." class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400">
+          </div>
+          <div class="flex gap-4 pt-2">
+            <button onclick="guardarConfigSupabase()" class="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-bold shadow">
+              Guardar Credenciales
+            </button>
+            <button onclick="probarConexionSupabase()" class="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-sm font-semibold border border-gray-700">
+              Probar Conexión
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- LÓGICA DE APLICACIÓN EN JAVASCRIPT -->
+  <script>
+    // ESTADO DE SUPABASE
+    let supabaseClient = null;
+
+    // INSTANCIAS DE CHARTS
+    let chart1Obj = null, chart2Obj = null, chart3Obj = null, chart4Obj = null, chart5Obj = null;
+
+    // INICIALIZACIÓN
+    window.addEventListener('DOMContentLoaded', () => {
+      initSupabase();
+      prepararFormularioRegistro();
+    });
+
+    // SISTEMA DE NAVEGACIÓN
+    function tabSwitch(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-violet-600', 'text-white');
+        btn.classList.add('text-gray-400', 'hover:text-white', 'hover:bg-gray-800');
+      });
+
+      document.getElementById(`section-${tabId}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      activeBtn.classList.add('bg-violet-600', 'text-white');
+      activeBtn.classList.remove('text-gray-400', 'hover:bg-gray-800');
+
+      if (tabId === 'historial') renderTablaHistorial();
+      if (tabId === 'dashboard') renderDashboardCharts();
+      if (tabId === 'carga') actualizarContadoresCloud();
+    }
+
+    // CONFIGURACIÓN SUPABASE CLOUD
+    function initSupabase() {
+      const url = localStorage.getItem('eri_sp_url') || '';
+      const key = localStorage.getItem('eri_sp_key') || '';
+
+      document.getElementById('cfg_url').value = url;
+      document.getElementById('cfg_key').value = key;
+
+      if (url && key && window.supabase) {
+        try {
+          supabaseClient = window.supabase.createClient(url, key);
+          setSupabaseStatus(true, "Supabase Cloud: Conectado");
+          actualizarContadoresCloud();
+        } catch (e) {
+          console.error("Error al inicializar Supabase:", e);
+          setSupabaseStatus(false, "Error de Credenciales");
+        }
+      } else {
+        setSupabaseStatus(false, "Sin Credenciales Supabase");
+      }
+    }
+
+    function setSupabaseStatus(connected, text) {
+      const el = document.getElementById('connectionStatus');
+      const st = document.getElementById('statusText');
+      st.textContent = text;
+      if (connected) {
+        el.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400";
+      } else {
+        el.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400";
+      }
+    }
+
+    function guardarConfigSupabase() {
+      const url = document.getElementById('cfg_url').value.trim();
+      const key = document.getElementById('cfg_key').value.trim();
+      localStorage.setItem('eri_sp_url', url);
+      localStorage.setItem('eri_sp_key', key);
+      initSupabase();
+      alert("Credenciales de Supabase guardadas correctamente.");
+    }
+
+    async function probarConexionSupabase() {
+      if (!supabaseClient) return alert("Ingrese URL y Key de Supabase primero.");
+      try {
+        const { data, error } = await supabaseClient.from('bd_costos').select('count', { count: 'exact', head: true });
+        if (error) throw error;
+        alert("¡Conexión a la nube de Supabase exitosa!");
+      } catch (err) {
+        alert("Error de conexión: " + err.message);
+      }
+    }
+
+    async function actualizarContadoresCloud() {
+      if (!supabaseClient) return;
+      try {
+        const [c1, c2, c3] = await Promise.all([
+          supabaseClient.from('bd_costos').select('count', { count: 'exact', head: true }),
+          supabaseClient.from('bd_carga_picking').select('count', { count: 'exact', head: true }),
+          supabaseClient.from('bd_dirca').select('count', { count: 'exact', head: true })
+        ]);
+
+        document.getElementById('count-costos').textContent = `${c1.count || 0} filas en Nube`;
+        document.getElementById('count-picking').textContent = `${c2.count || 0} filas en Nube`;
+        document.getElementById('count-dirca').textContent = `${c3.count || 0} filas en Nube`;
+      } catch(e) {
+        console.warn("No se pudieron consultar contadores:", e);
+      }
+    }
+
+    // CARGA MASIVA A SUPABASE (DESPOJANDO EL CAMPO ID DEL EXCEL PARA EVITAR DUPLICADOS DE PKEY)
+    async function handleFileUpload(event, tabla) {
+      if (!supabaseClient) {
+        alert("Atención: Supabase no está conectado. Configure las credenciales en la pestaña 'Configuración Supabase'.");
+        return;
+      }
+
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.SheetNames[0];
+          const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+
+          if (rawRows.length === 0) return alert("El archivo seleccionado está vacío.");
+
+          const parsedRows = normalizarColumnas(rawRows, tabla);
+          await enviarLotesASupabaseCloud(tabla, parsedRows);
+        } catch (err) {
+          alert("Error al leer el archivo Excel: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Función para convertir fechas de Excel (números seriales como 46275.55 o texto) a YYYY-MM-DD
+function parseExcelDate(val) {
+  if (!val) return null;
+  
+  if (typeof val === 'number') {
+    const utcDays = Math.floor(val - 25569);
+    const utcValue = utcDays * 86400 * 1000;
+    const dateInfo = new Date(utcValue);
+    if (!isNaN(dateInfo.getTime())) {
+      return dateInfo.toISOString().split('T')[0];
+    }
+  }
+
+  const str = String(val).trim();
+  
+  if (!isNaN(str) && str !== '') {
+    const num = parseFloat(str);
+    if (num > 30000 && num < 60000) {
+      const utcDays = Math.floor(num - 25569);
+      const utcValue = utcDays * 86400 * 1000;
+      const dateInfo = new Date(utcValue);
+      if (!isNaN(dateInfo.getTime())) {
+        return dateInfo.toISOString().split('T')[0];
+      }
+    }
+  }
+
+  return str.substring(0, 10) || null;
+}
+
+function normalizarColumnas(rows, tabla) {
+  return rows.map(r => {
+    const keys = Object.keys(r);
+    
+    const findVal = (...aliases) => {
+      // Función auxiliar para quitar tildes y caracteres especiales
+      const limpiarStr = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+
+      for (let alias of aliases) {
+        const match = keys.find(k => limpiarStr(k) === limpiarStr(alias));
+        if (match && r[match] !== undefined && r[match] !== null) return r[match];
+      }
+      return null;
+    };
+
+    const parseNumber = (val) => {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === 'number') return val;
+      let str = String(val).replace(/,/g, '.').replace(/[^0-9.-]/g, '').trim();
+      let parsed = parseFloat(str);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    if (tabla === 'bd_costos') {
+      return {
+        codigo: String(findVal('codigo', 'cod', 'item') || '').trim(),
+        descripcion: String(findVal('descripcion', 'desc', 'nombre') || '').trim(),
+        unidad_medida: String(findVal('unidadmedida', 'um', 'unidad') || 'UND').trim(),
+        costo_unitario: parseNumber(findVal('costounitario', 'costo', 'unitario', 'precio'))
+      };
+    } else if (tabla === 'bd_carga_picking') {
+      return {
+        codigo: String(findVal('codigo', 'cod') || '').trim(),
+        nro_carga: String(findVal('nrocarga', 'carga') || '').trim(),
+        nro_lpn: String(findVal('nrolpn', 'lpn') || '').trim(),
+        descripcion: String(findVal('descripcion', 'desc') || '').trim(),
+        cantidad_enviada: parseNumber(findVal('cantidadenviada', 'cant')),
+        bodega: String(findVal('bodega') || '').trim(),
+        ubicacion_picking: String(findVal('ubicacionpicking', 'ubicacion') || '').trim(),
+        usuario_picking: String(findVal('usuariopicking', 'usuario') || '').trim(),
+        fecha_picking: parseExcelDate(findVal('fechapicking', 'fecha', 'pickdate'))
+      };
+    } else if (tabla === 'bd_dirca') {
+      return {
+        codigo: String(findVal('codigo', 'cod') || '').trim(),
+        nro_carga: String(findVal('nrocarga', 'carga') || '').trim(),
+        cantidad_diferencia: parseNumber(findVal('cantidaddiferencia', 'diferencia')),
+        tipo_diferencia: String(findVal('tipodiferencia', 'tipo') || '').trim(),
+        nro_dirca: String(findVal('nrodirca', 'dirca') || '').trim()
+      };
+    }
+  });
+}
+
+    async function enviarLotesASupabaseCloud(tabla, filas) {
+      const pContainer = document.getElementById('progressContainer');
+      const pBar = document.getElementById('progressBar');
+      const pPercent = document.getElementById('progressPercent');
+      const pCounter = document.getElementById('progressCounter');
+      const pBatch = document.getElementById('batchInfo');
+
+      pContainer.classList.remove('hidden');
+      pBar.style.width = '0%';
+      pPercent.textContent = '0%';
+
+      const BATCH_SIZE = 500;
+      const totalFilas = filas.length;
+      const totalLotes = Math.ceil(totalFilas / BATCH_SIZE);
+
+      let insertadosTotales = 0;
+
+      for (let i = 0; i < totalLotes; i++) {
+        const start = i * BATCH_SIZE;
+        const batch = filas.slice(start, start + BATCH_SIZE);
+
+        const { error } = await supabaseClient.from(tabla).insert(batch);
+        if (error) {
+          console.error(`Error enviando lote ${i+1} a Supabase:`, error);
+          alert(`Error en el lote ${i+1}: ` + error.message);
+          pContainer.classList.add('hidden');
+          return;
+        }
+
+        insertadosTotales += batch.length;
+
+        const pct = Math.round((insertadosTotales / totalFilas) * 100);
+        pBar.style.width = `${pct}%`;
+        pPercent.textContent = `${pct}%`;
+        pCounter.textContent = `Procesados: ${insertadosTotales} de ${totalFilas} filas en Supabase Cloud`;
+        pBatch.textContent = `Lote ${i+1} / ${totalLotes}`;
+
+        await new Promise(r => setTimeout(r, 50));
+      }
+
+      await actualizarContadoresCloud();
+
+      setTimeout(() => {
+        alert(`¡Carga de documentos exitosa en Supabase Cloud!\nSe guardaron ${totalFilas} registros de forma acumulativa.`);
+        pContainer.classList.add('hidden');
+      }, 200);
+    }
+
+    // DATOS DE DEMO DIRECTO A LA NUBE
+    async function loadDemoData(tabla) {
+      if (!supabaseClient) return alert("Conecte Supabase primero.");
+      const demoRows = [];
+      const bodegas = ['LP1', 'LP2', 'RK', 'CG', 'CF'];
+      const usuarios = ['JUAN PEREZ', 'MARIA GOMEZ', 'CARLOS LOPEZ', 'ANA TORRES'];
+      const tipos = ['faltante', 'sobrante', 'cruce de producto faltante', 'cruce de producto sobrante'];
+
+      for (let i = 1; i <= 500; i++) {
+        const cod = `PROD-${1000 + (i % 50)}`;
+        const crg = `CRG-${8000 + (i % 30)}`;
+        if (tabla === 'bd_costos') {
+          demoRows.push({ codigo: cod, descripcion: `PRODUCTO FARMACEUTICO ERI #${i}`, unidad_medida: 'UND', costo_unitario: (Math.random() * 50 + 5).toFixed(2) });
+        } else if (tabla === 'bd_carga_picking') {
+          const bdg = bodegas[i % bodegas.length];
+          demoRows.push({
+            codigo: cod, nro_carga: crg, nro_lpn: `LPN-${9000+i}`, descripcion: `PRODUCTO FARMACEUTICO ERI #${i}`,
+            cantidad_enviada: Math.floor(Math.random() * 100) + 10, bodega: bdg,
+            ubicacion_picking: `${bdg}-0${(i%5)+1}-01-0${(i%3)+1}`, usuario_picking: usuarios[i % usuarios.length],
+            fecha_picking: new Date(Date.now() - Math.floor(Math.random() * 60) * 86400000).toISOString().split('T')[0]
+          });
+        } else if (tabla === 'bd_dirca') {
+          demoRows.push({
+            codigo: cod, nro_carga: crg, cantidad_diferencia: Math.floor(Math.random() * 10) + 1,
+            tipo_diferencia: tipos[i % tipos.length], nro_dirca: `DIRCA-${5000+i}`
+          });
+        }
+      }
+
+      await enviarLotesASupabaseCloud(tabla, demoRows);
+    }
+
+    // REGISTRO ERI - CONSULTA EN TIEMPO REAL A SUPABASE
+    function prepararFormularioRegistro() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('reg_fecha_registro').value = today;
+    }
+
+    async function autoCompletarFormulario() {
+      const cod = document.getElementById('reg_codigo').value.trim();
+      const crgLpn = document.getElementById('reg_carga_lpn').value.trim();
+
+      if (!cod || !crgLpn || !supabaseClient) return;
+
+      const [rPicking, rCosto, rDirca] = await Promise.all([
+        supabaseClient.from('bd_carga_picking').select('*').eq('codigo', cod).or(`nro_carga.eq.${crgLpn},nro_lpn.eq.${crgLpn}`).limit(1),
+        supabaseClient.from('bd_costos').select('*').eq('codigo', cod).limit(1),
+        supabaseClient.from('bd_dirca').select('*').eq('codigo', cod).eq('nro_carga', crgLpn).limit(1)
+      ]);
+
+      const matchPicking = rPicking.data?.[0];
+      const matchCosto = rCosto.data?.[0];
+      const matchDirca = rDirca.data?.[0];
+
+      document.getElementById('reg_descripcion').value = matchPicking?.descripcion || matchCosto?.descripcion || '';
+      document.getElementById('reg_cantidad_enviada').value = matchPicking?.cantidad_enviada || 0;
+      document.getElementById('reg_bodega').value = matchPicking?.bodega || '';
+      document.getElementById('reg_ubicacion_picking').value = matchPicking?.ubicacion_picking || '';
+      document.getElementById('reg_usuario_picking').value = matchPicking?.usuario_picking || '';
+      document.getElementById('reg_fecha_picking').value = matchPicking?.fecha_picking || '';
+
+      const cUnit = parseFloat(matchCosto?.costo_unitario || 0);
+      document.getElementById('reg_costo_unitario').value = cUnit.toFixed(2);
+
+      let tipoDif = matchDirca?.tipo_diferencia || 'faltante';
+      let cantDifRaw = Math.abs(parseFloat(matchDirca?.cantidad_diferencia || 0));
+
+      let cantDif = cantDifRaw;
+      if (String(tipoDif).toLowerCase().includes('sobrante')) {
+        cantDif = -Math.abs(cantDifRaw);
+      } else {
+        cantDif = Math.abs(cantDifRaw);
+      }
+
+      document.getElementById('reg_tipo_diferencia').value = tipoDif;
+      document.getElementById('reg_cantidad_diferencia').value = cantDif;
+      document.getElementById('reg_nro_dirca').value = matchDirca?.nro_dirca || '';
+
+      const cTotal = Math.abs(cantDif) * cUnit;
+      document.getElementById('reg_costo_total').value = cTotal.toFixed(2);
+
+      if (matchPicking?.fecha_picking) {
+        const fReg = new Date(document.getElementById('reg_fecha_registro').value);
+        const fPick = new Date(matchPicking.fecha_picking);
+        const diffDays = Math.floor((fReg - fPick) / (1000 * 60 * 60 * 24));
+
+        const badge = document.getElementById('reg_rechazo_badge');
+        if (diffDays > 45) {
+          badge.textContent = `RECHAZAR (${diffDays} días)`;
+          badge.className = "px-3 py-2 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 text-center animate-pulse";
+        } else {
+          badge.textContent = `ACEPTAR (${diffDays} días)`;
+          badge.className = "px-3 py-2 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-center";
+        }
+      }
+    }
+
+    async function guardarRegistroERI() {
+      if (!supabaseClient) return alert("Conecte Supabase para guardar registros.");
+
+      const codigo = document.getElementById('reg_codigo').value.trim();
+      const cargaLpn = document.getElementById('reg_carga_lpn').value.trim();
+      const errPicking = document.getElementById('reg_error_picking').value;
+
+      if (!codigo || !cargaLpn || !errPicking) {
+        return alert("Por favor complete los campos: Código, Nro Carga/LPN y selecciones si es Error Picking.");
+      }
+
+      const nuevoRegistro = {
+        fecha_registro: document.getElementById('reg_fecha_registro').value,
+        codigo: codigo,
+        descripcion: document.getElementById('reg_descripcion').value,
+        nro_carga_lpn: cargaLpn,
+        cantidad_enviada: parseFloat(document.getElementById('reg_cantidad_enviada').value || 0),
+        bodega: document.getElementById('reg_bodega').value,
+        ubicacion_picking: document.getElementById('reg_ubicacion_picking').value,
+        usuario_picking: document.getElementById('reg_usuario_picking').value,
+        fecha_picking: document.getElementById('reg_fecha_picking').value || null,
+        cantidad_diferencia: parseFloat(document.getElementById('reg_cantidad_diferencia').value || 0),
+        tipo_diferencia: document.getElementById('reg_tipo_diferencia').value,
+        nro_dirca: document.getElementById('reg_nro_dirca').value,
+        costo_unitario: parseFloat(document.getElementById('reg_costo_unitario').value || 0),
+        costo_total: parseFloat(document.getElementById('reg_costo_total').value || 0),
+        rechazo_por_fecha: document.getElementById('reg_rechazo_badge').textContent.includes('RECHAZAR') ? 'RECHAZAR' : 'ACEPTAR',
+        error_picking: errPicking
+      };
+
+      const { error } = await supabaseClient.from('registros_eri').insert([nuevoRegistro]);
+      if (error) {
+        alert("Error al guardar registro en Supabase: " + error.message);
+        return;
+      }
+
+      alert("¡Registro ERI guardado correctamente en la nube!");
+      limpiarFormularioRegistro();
+      tabSwitch('historial');
+    }
+
+    function limpiarFormularioRegistro() {
+      document.getElementById('reg_codigo').value = '';
+      document.getElementById('reg_carga_lpn').value = '';
+      document.getElementById('reg_descripcion').value = '';
+      document.getElementById('reg_cantidad_enviada').value = '';
+      document.getElementById('reg_bodega').value = '';
+      document.getElementById('reg_ubicacion_picking').value = '';
+      document.getElementById('reg_usuario_picking').value = '';
+      document.getElementById('reg_fecha_picking').value = '';
+      document.getElementById('reg_nro_dirca').value = '';
+      document.getElementById('reg_tipo_diferencia').value = '';
+      document.getElementById('reg_cantidad_diferencia').value = '';
+      document.getElementById('reg_costo_unitario').value = '';
+      document.getElementById('reg_costo_total').value = '';
+      document.getElementById('reg_error_picking').value = '';
+      document.getElementById('reg_rechazo_badge').textContent = 'Pendiente';
+      document.getElementById('reg_rechazo_badge').className = "px-3 py-2 rounded-lg text-xs font-bold bg-gray-800 text-gray-400 border border-gray-700 text-center";
+    }
+
+    // HISTORIAL DESDE SUPABASE CLOUD
+    async function renderTablaHistorial() {
+      const tbody = document.getElementById('tbody-historial');
+      tbody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-gray-400">Cargando registros desde Supabase Cloud...</td></tr>';
+
+      if (!supabaseClient) {
+        tbody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-yellow-400">Conecte Supabase para visualizar el historial.</td></tr>';
+        return;
+      }
+
+      let query = supabaseClient.from('registros_eri').select('*').order('created_at', { ascending: false });
+
+      const fDesde = document.getElementById('filter_fecha_desde').value;
+      const fHasta = document.getElementById('filter_fecha_hasta').value;
+
+      if (fDesde) query = query.gte('fecha_registro', fDesde);
+      if (fHasta) query = query.lte('fecha_registro', fHasta);
+
+      const { data, error } = await query;
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-rose-400">Error: ${error.message}</td></tr>`;
+        return;
+      }
+
+      const search = document.getElementById('filter_search').value.toLowerCase().trim();
+      const filtrados = (data || []).filter(r => {
+        return !search || (r.codigo && r.codigo.toLowerCase().includes(search)) || (r.nro_dirca && r.nro_dirca.toLowerCase().includes(search));
+      });
+
+      if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-gray-500">No se encontraron registros en el historial.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      filtrados.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-800/50 transition border-b border-gray-800/50";
+        tr.innerHTML = `
+          <td class="p-3 font-mono">${row.fecha_registro || ''}</td>
+          <td class="p-3 font-bold text-violet-400">${row.codigo || ''}</td>
+          <td class="p-3 font-mono">${row.nro_carga_lpn || ''}</td>
+          <td class="p-3">${row.bodega || ''}</td>
+          <td class="p-3 font-mono">${row.ubicacion_picking || ''}</td>
+          <td class="p-3">${row.usuario_picking || ''}</td>
+          <td class="p-3 font-mono text-amber-400">${row.nro_dirca || ''}</td>
+          <td class="p-3">${row.tipo_diferencia || ''}</td>
+          <td class="p-3 text-right font-mono ${row.cantidad_diferencia < 0 ? 'text-rose-400' : 'text-emerald-400'}">${row.cantidad_diferencia}</td>
+          <td class="p-3 text-right font-mono text-cyan-300">$${parseFloat(row.costo_total || 0).toFixed(2)}</td>
+          <td class="p-3 text-center font-bold ${row.rechazo_por_fecha === 'RECHAZAR' ? 'text-rose-400' : 'text-emerald-400'}">${row.rechazo_por_fecha}</td>
+          <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${row.error_picking === 'SI' ? 'bg-rose-500/20 text-rose-300' : 'bg-gray-800 text-gray-400'}">${row.error_picking}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function aplicarFiltrosHistorial() { renderTablaHistorial(); }
+    function limpiarFiltrosHistorial() {
+      document.getElementById('filter_search').value = '';
+      document.getElementById('filter_fecha_desde').value = '';
+      document.getElementById('filter_fecha_hasta').value = '';
+      renderTablaHistorial();
+    }
+
+    async function exportarExcelHistorial() {
+      if (!supabaseClient) return alert("Conecte Supabase para exportar.");
+      const { data } = await supabaseClient.from('registros_eri').select('*');
+      if (!data || data.length === 0) return alert("No hay datos para exportar.");
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Historial ERI");
+      XLSX.writeFile(wb, `Historial_ERI_Nexocorp_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // DASHBOARD DESDE SUPABASE CLOUD
+    async function renderDashboardCharts() {
+      if (!supabaseClient) return;
+
+      const { data } = await supabaseClient.from('registros_eri').select('*');
+      const allData = data || [];
+
+      const filterMonth = document.getElementById('dash_filter_month').value;
+      const filterError = document.getElementById('dash_filter_error').value;
+
+      const selectMonth = document.getElementById('dash_filter_month');
+      const meses = [...new Set(allData.map(d => d.fecha_registro ? d.fecha_registro.substring(0, 7) : ''))].filter(Boolean);
+      selectMonth.innerHTML = '<option value="ALL">Todos los Meses</option>' + meses.map(m => `<option value="${m}">${m}</option>`).join('');
+      selectMonth.value = filterMonth;
+
+      const filtered = allData.filter(d => {
+        const m = d.fecha_registro ? d.fecha_registro.substring(0, 7) : '';
+        const matchM = (filterMonth === 'ALL' || m === filterMonth);
+        const matchE = (filterError === 'ALL' || d.error_picking === filterError);
+        return matchM && matchE;
+      });
+
+      document.getElementById('kpi-total-registros').textContent = filtered.length;
+
+      let cSobrantes = 0, cFaltantes = 0;
+      filtered.forEach(d => {
+        const c = parseFloat(d.costo_total || 0);
+        if (String(d.tipo_diferencia).toLowerCase().includes('sobrante')) {
+          cSobrantes += c;
+        } else {
+          cFaltantes += c;
+        }
+      });
+
+      document.getElementById('kpi-costo-sobrantes').textContent = `$${cSobrantes.toFixed(2)}`;
+      document.getElementById('kpi-costo-faltantes').textContent = `$${cFaltantes.toFixed(2)}`;
+      document.getElementById('kpi-impacto-neto').textContent = `$${(cSobrantes - cFaltantes).toFixed(2)}`;
+
+      // 1. Top Errores Usuario
+      const userErrors = {};
+      filtered.filter(d => d.error_picking === 'SI').forEach(d => {
+        const u = d.usuario_picking || 'SIN USUARIO';
+        userErrors[u] = (userErrors[u] || 0) + 1;
+      });
+      const sortedUsers = Object.entries(userErrors).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+      if (chart1Obj) chart1Obj.destroy();
+      chart1Obj = new Chart(document.getElementById('chart1'), {
+        type: 'bar',
+        data: {
+          labels: sortedUsers.map(x => x[0]),
+          datasets: [{ label: 'Errores', data: sortedUsers.map(x => x[1]), backgroundColor: '#ec4899' }]
+        },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+      });
+
+      // 2. Consolidado por Bodega
+      const bodegaCounts = {};
+      filtered.forEach(d => {
+        const b = d.bodega || 'N/A';
+        bodegaCounts[b] = (bodegaCounts[b] || 0) + 1;
+      });
+
+      if (chart2Obj) chart2Obj.destroy();
+      chart2Obj = new Chart(document.getElementById('chart2'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(bodegaCounts),
+          datasets: [{ label: 'Registros', data: Object.values(bodegaCounts), backgroundColor: '#8b5cf6' }]
+        },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+      });
+
+      // 3. Ubicaciones Picking
+      const locPrefixes = {};
+      filtered.forEach(d => {
+        const loc = d.ubicacion_picking || '';
+        const pref = loc.split('-')[0] || 'OTRO';
+        locPrefixes[pref] = (locPrefixes[pref] || 0) + 1;
+      });
+
+      if (chart3Obj) chart3Obj.destroy();
+      chart3Obj = new Chart(document.getElementById('chart3'), {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(locPrefixes),
+          datasets: [{ data: Object.values(locPrefixes), backgroundColor: ['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // 4. Top Productos
+      const prodCounts = {};
+      filtered.forEach(d => {
+        const p = d.codigo || 'S/C';
+        prodCounts[p] = (prodCounts[p] || 0) + 1;
+      });
+      const sortedProds = Object.entries(prodCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+      if (chart4Obj) chart4Obj.destroy();
+      chart4Obj = new Chart(document.getElementById('chart4'), {
+        type: 'bar',
+        data: {
+          labels: sortedProds.map(x => x[0]),
+          datasets: [{ label: 'Incidencias', data: sortedProds.map(x => x[1]), backgroundColor: '#06b6d4' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // 5. Barras y Líneas
+      const monthlyTotal = {};
+      const monthlyErrors = {};
+
+      allData.forEach(d => {
+        const m = d.fecha_registro ? d.fecha_registro.substring(0, 7) : '2026-10';
+        monthlyTotal[m] = (monthlyTotal[m] || 0) + 1;
+        if (d.error_picking === 'SI') {
+          monthlyErrors[m] = (monthlyErrors[m] || 0) + 1;
+        }
+      });
+
+      const allMonths = Object.keys(monthlyTotal).sort();
+
+      if (chart5Obj) chart5Obj.destroy();
+      chart5Obj = new Chart(document.getElementById('chart5'), {
+        type: 'bar',
+        data: {
+          labels: allMonths,
+          datasets: [
+            { type: 'bar', label: 'Total Registros', data: allMonths.map(m => monthlyTotal[m] || 0), backgroundColor: '#3b82f6' },
+            { type: 'line', label: 'Errores Usuario (SI)', data: allMonths.map(m => monthlyErrors[m] || 0), borderColor: '#ec4899', backgroundColor: '#ec4899', tension: 0.3 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    // UTILS
+    function downloadTemplate(tipo) {
+      let headers = [];
+      if (tipo === 'costos') headers = [['codigo', 'descripcion', 'unidad_medida', 'costo_unitario']];
+      if (tipo === 'picking') headers = [['codigo', 'nro_carga', 'nro_lpn', 'descripcion', 'cantidad_enviada', 'bodega', 'ubicacion_picking', 'usuario_picking', 'fecha_picking']];
+      if (tipo === 'dirca') headers = [['codigo', 'nro_carga', 'cantidad_diferencia', 'tipo_diferencia', 'nro_dirca']];
+
+      const ws = XLSX.utils.aoa_to_sheet(headers);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Plantilla_${tipo}`);
+      XLSX.writeFile(wb, `Plantilla_${tipo}.xlsx`);
+    }
+  </script>
+</body>
+</html>
