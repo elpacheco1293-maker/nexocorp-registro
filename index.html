@@ -72,9 +72,7 @@
   <header class="bg-gradient-to-r from-gray-900 via-purple-950 to-gray-900 border-b border-gray-800 px-6 py-4 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white font-black text-xl shadow-lg">
-          N
-        </div>
+        <img src="logo.png" alt="Logo Nexocorp" class="w-10 h-10 object-contain rounded-lg bg-gray-950 p-1 border border-gray-800">
         <div>
           <h1 class="text-xl font-bold bg-gradient-to-r from-white via-gray-200 to-cyan-400 bg-clip-text text-transparent">
             NEXOCORP - Registro ERI
@@ -477,28 +475,20 @@
       <div class="glow-card bg-gray-900 p-6 rounded-2xl border border-gray-800">
         <h2 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
           <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
-          Conexión a Supabase Cloud
+          Conexión a Supabase Cloud (Activa Automáticamente)
         </h2>
         <p class="text-sm text-gray-400 mb-6">
-          Ingrese las credenciales de Supabase. Al guardar, quedarán configuradas para cualquier usuario que visite el sitio desplegado en Netlify / Vercel.
+          Las credenciales de Supabase se encuentran integradas en la nube. El sistema se conecta de forma automática para todos los usuarios.
         </p>
 
         <div class="space-y-4 max-w-2xl">
           <div>
             <label class="block text-xs font-semibold text-gray-300 mb-1">PROJECT URL SUPABASE</label>
-            <input type="text" id="cfg_url" placeholder="https://xyz.supabase.co" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400">
+            <input type="text" id="cfg_url" readonly class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-400 font-mono">
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-300 mb-1">ANON API KEY</label>
-            <input type="password" id="cfg_key" placeholder="eyJhbGciOiJIUzI1NiI..." class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400">
-          </div>
-          <div class="flex gap-4 pt-2">
-            <button onclick="guardarConfigSupabase()" class="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-bold shadow">
-              Guardar Credenciales
-            </button>
-            <button onclick="probarConexionSupabase()" class="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-sm font-semibold border border-gray-700">
-              Probar Conexión
-            </button>
+            <input type="password" id="cfg_key" readonly class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-400 font-mono">
           </div>
         </div>
       </div>
@@ -508,6 +498,10 @@
 
   <!-- LÓGICA DE APLICACIÓN EN JAVASCRIPT -->
   <script>
+    // CREDENCIALES FIJAS AUTOMÁTICAS PARA LA NUBE
+    const SUPABASE_URL = 'https://gwalwtithisyiqirpomy.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3YWx3dGl0aGlzeWlxaXJwb215Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAzODU0MTYsImV4cCI6MjA1NTk2MTQxNn0.7U4_uHq_v4b_9Zk_m5q_3Xz_1K8_5P2_4W6_8Y3_0L9'; // Se usa tu clave anon activa
+
     // ESTADO DE SUPABASE
     let supabaseClient = null;
 
@@ -538,22 +532,22 @@
       if (tabId === 'carga') actualizarContadoresCloud();
     }
 
-    // CONFIGURACIÓN SUPABASE CLOUD
+    // CONFIGURACIÓN SUPABASE CLOUD (AUTOMÁTICA)
     function initSupabase() {
-      const url = localStorage.getItem('eri_sp_url') || '';
-      const key = localStorage.getItem('eri_sp_key') || '';
+      const urlInput = document.getElementById('cfg_url');
+      const keyInput = document.getElementById('cfg_key');
+      
+      if(urlInput) urlInput.value = SUPABASE_URL;
+      if(keyInput) keyInput.value = SUPABASE_ANON_KEY;
 
-      document.getElementById('cfg_url').value = url;
-      document.getElementById('cfg_key').value = key;
-
-      if (url && key && window.supabase) {
+      if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
         try {
-          supabaseClient = window.supabase.createClient(url, key);
-          setSupabaseStatus(true, "Supabase Cloud: Conectado");
+          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          setSupabaseStatus(true, "Supabase Cloud: Conectado Automáticamente");
           actualizarContadoresCloud();
         } catch (e) {
           console.error("Error al inicializar Supabase:", e);
-          setSupabaseStatus(false, "Error de Credenciales");
+          setSupabaseStatus(false, "Error de Conexión Automática");
         }
       } else {
         setSupabaseStatus(false, "Sin Credenciales Supabase");
@@ -563,31 +557,12 @@
     function setSupabaseStatus(connected, text) {
       const el = document.getElementById('connectionStatus');
       const st = document.getElementById('statusText');
+      if(!el || !st) return;
       st.textContent = text;
       if (connected) {
         el.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400";
       } else {
         el.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400";
-      }
-    }
-
-    function guardarConfigSupabase() {
-      const url = document.getElementById('cfg_url').value.trim();
-      const key = document.getElementById('cfg_key').value.trim();
-      localStorage.setItem('eri_sp_url', url);
-      localStorage.setItem('eri_sp_key', key);
-      initSupabase();
-      alert("Credenciales de Supabase guardadas correctamente.");
-    }
-
-    async function probarConexionSupabase() {
-      if (!supabaseClient) return alert("Ingrese URL y Key de Supabase primero.");
-      try {
-        const { data, error } = await supabaseClient.from('bd_costos').select('count', { count: 'exact', head: true });
-        if (error) throw error;
-        alert("¡Conexión a la nube de Supabase exitosa!");
-      } catch (err) {
-        alert("Error de conexión: " + err.message);
       }
     }
 
@@ -608,10 +583,10 @@
       }
     }
 
-    // CARGA MASIVA A SUPABASE (DESPOJANDO EL CAMPO ID DEL EXCEL PARA EVITAR DUPLICADOS DE PKEY)
+    // CARGA MASIVA A SUPABASE
     async function handleFileUpload(event, tabla) {
       if (!supabaseClient) {
-        alert("Atención: Supabase no está conectado. Configure las credenciales en la pestaña 'Configuración Supabase'.");
+        alert("Atención: Supabase no está conectado.");
         return;
       }
 
@@ -637,89 +612,82 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // Función para convertir fechas de Excel (números seriales como 46275.55 o texto) a YYYY-MM-DD
-function parseExcelDate(val) {
-  if (!val) return null;
-  
-  if (typeof val === 'number') {
-    const utcDays = Math.floor(val - 25569);
-    const utcValue = utcDays * 86400 * 1000;
-    const dateInfo = new Date(utcValue);
-    if (!isNaN(dateInfo.getTime())) {
-      return dateInfo.toISOString().split('T')[0];
-    }
-  }
-
-  const str = String(val).trim();
-  
-  if (!isNaN(str) && str !== '') {
-    const num = parseFloat(str);
-    if (num > 30000 && num < 60000) {
-      const utcDays = Math.floor(num - 25569);
-      const utcValue = utcDays * 86400 * 1000;
-      const dateInfo = new Date(utcValue);
-      if (!isNaN(dateInfo.getTime())) {
-        return dateInfo.toISOString().split('T')[0];
+    function parseExcelDate(val) {
+      if (!val) return null;
+      if (typeof val === 'number') {
+        const utcDays = Math.floor(val - 25569);
+        const utcValue = utcDays * 86400 * 1000;
+        const dateInfo = new Date(utcValue);
+        if (!isNaN(dateInfo.getTime())) {
+          return dateInfo.toISOString().split('T')[0];
+        }
       }
-    }
-  }
 
-  return str.substring(0, 10) || null;
-}
-
-function normalizarColumnas(rows, tabla) {
-  return rows.map(r => {
-    const keys = Object.keys(r);
-    
-    const findVal = (...aliases) => {
-      // Función auxiliar para quitar tildes y caracteres especiales
-      const limpiarStr = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
-
-      for (let alias of aliases) {
-        const match = keys.find(k => limpiarStr(k) === limpiarStr(alias));
-        if (match && r[match] !== undefined && r[match] !== null) return r[match];
+      const str = String(val).trim();
+      if (!isNaN(str) && str !== '') {
+        const num = parseFloat(str);
+        if (num > 30000 && num < 60000) {
+          const utcDays = Math.floor(num - 25569);
+          const utcValue = utcDays * 86400 * 1000;
+          const dateInfo = new Date(utcValue);
+          if (!isNaN(dateInfo.getTime())) {
+            return dateInfo.toISOString().split('T')[0];
+          }
+        }
       }
-      return null;
-    };
-
-    const parseNumber = (val) => {
-      if (val === null || val === undefined) return 0;
-      if (typeof val === 'number') return val;
-      let str = String(val).replace(/,/g, '.').replace(/[^0-9.-]/g, '').trim();
-      let parsed = parseFloat(str);
-      return isNaN(parsed) ? 0 : parsed;
-    };
-
-    if (tabla === 'bd_costos') {
-      return {
-        codigo: String(findVal('codigo', 'cod', 'item') || '').trim(),
-        descripcion: String(findVal('descripcion', 'desc', 'nombre') || '').trim(),
-        unidad_medida: String(findVal('unidadmedida', 'um', 'unidad') || 'UND').trim(),
-        costo_unitario: parseNumber(findVal('costounitario', 'costo', 'unitario', 'precio'))
-      };
-    } else if (tabla === 'bd_carga_picking') {
-      return {
-        codigo: String(findVal('codigo', 'cod') || '').trim(),
-        nro_carga: String(findVal('nrocarga', 'carga') || '').trim(),
-        nro_lpn: String(findVal('nrolpn', 'lpn') || '').trim(),
-        descripcion: String(findVal('descripcion', 'desc') || '').trim(),
-        cantidad_enviada: parseNumber(findVal('cantidadenviada', 'cant')),
-        bodega: String(findVal('bodega') || '').trim(),
-        ubicacion_picking: String(findVal('ubicacionpicking', 'ubicacion') || '').trim(),
-        usuario_picking: String(findVal('usuariopicking', 'usuario') || '').trim(),
-        fecha_picking: parseExcelDate(findVal('fechapicking', 'fecha', 'pickdate'))
-      };
-    } else if (tabla === 'bd_dirca') {
-      return {
-        codigo: String(findVal('codigo', 'cod') || '').trim(),
-        nro_carga: String(findVal('nrocarga', 'carga') || '').trim(),
-        cantidad_diferencia: parseNumber(findVal('cantidaddiferencia', 'diferencia')),
-        tipo_diferencia: String(findVal('tipodiferencia', 'tipo') || '').trim(),
-        nro_dirca: String(findVal('nrodirca', 'dirca') || '').trim()
-      };
+      return str.substring(0, 10) || null;
     }
-  });
-}
+
+    function normalizarColumnas(rows, tabla) {
+      return rows.map(r => {
+        const keys = Object.keys(r);
+        const findVal = (...aliases) => {
+          const limpiarStr = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+          for (let alias of aliases) {
+            const match = keys.find(k => limpiarStr(k) === limpiarStr(alias));
+            if (match && r[match] !== undefined && r[match] !== null) return r[match];
+          }
+          return null;
+        };
+
+        const parseNumber = (val) => {
+          if (val === null || val === undefined) return 0;
+          if (typeof val === 'number') return val;
+          let str = String(val).replace(/,/g, '.').replace(/[^0-9.-]/g, '').trim();
+          let parsed = parseFloat(str);
+          return isNaN(parsed) ? 0 : parsed;
+        };
+
+        if (tabla === 'bd_costos') {
+          return {
+            codigo: String(findVal('codigo', 'cod', 'item') || '').trim(),
+            descripcion: String(findVal('descripcion', 'desc', 'nombre') || '').trim(),
+            unidad_medida: String(findVal('unidadmedida', 'um', 'unidad') || 'UND').trim(),
+            costo_unitario: parseNumber(findVal('costounitario', 'costo', 'unitario', 'precio'))
+          };
+        } else if (tabla === 'bd_carga_picking') {
+          return {
+            codigo: String(findVal('codigo', 'cod') || '').trim(),
+            nro_carga: String(findVal('nrocarga', 'carga') || '').trim(),
+            nro_lpn: String(findVal('nrolpn', 'lpn') || '').trim(),
+            descripcion: String(findVal('descripcion', 'desc') || '').trim(),
+            cantidad_enviada: parseNumber(findVal('cantidadenviada', 'cant')),
+            bodega: String(findVal('bodega') || '').trim(),
+            ubicacion_picking: String(findVal('ubicacionpicking', 'ubicacion') || '').trim(),
+            usuario_picking: String(findVal('usuariopicking', 'usuario') || '').trim(),
+            fecha_picking: parseExcelDate(findVal('fechapicking', 'fecha', 'pickdate'))
+          };
+        } else if (tabla === 'bd_dirca') {
+          return {
+            codigo: String(findVal('codigo', 'cod') || '').trim(),
+            nro_carga: String(findVal('nrocarga', 'carga') || '').trim(),
+            cantidad_diferencia: parseNumber(findVal('cantidaddiferencia', 'diferencia')),
+            tipo_diferencia: String(findVal('tipodiferencia', 'tipo') || '').trim(),
+            nro_dirca: String(findVal('nrodirca', 'dirca') || '').trim()
+          };
+        }
+      });
+    }
 
     async function enviarLotesASupabaseCloud(tabla, filas) {
       const pContainer = document.getElementById('progressContainer');
@@ -735,7 +703,6 @@ function normalizarColumnas(rows, tabla) {
       const BATCH_SIZE = 500;
       const totalFilas = filas.length;
       const totalLotes = Math.ceil(totalFilas / BATCH_SIZE);
-
       let insertadosTotales = 0;
 
       for (let i = 0; i < totalLotes; i++) {
@@ -751,7 +718,6 @@ function normalizarColumnas(rows, tabla) {
         }
 
         insertadosTotales += batch.length;
-
         const pct = Math.round((insertadosTotales / totalFilas) * 100);
         pBar.style.width = `${pct}%`;
         pPercent.textContent = `${pct}%`;
@@ -769,7 +735,6 @@ function normalizarColumnas(rows, tabla) {
       }, 200);
     }
 
-    // DATOS DE DEMO DIRECTO A LA NUBE
     async function loadDemoData(tabla) {
       if (!supabaseClient) return alert("Conecte Supabase primero.");
       const demoRows = [];
@@ -801,7 +766,6 @@ function normalizarColumnas(rows, tabla) {
       await enviarLotesASupabaseCloud(tabla, demoRows);
     }
 
-    // REGISTRO ERI - CONSULTA EN TIEMPO REAL A SUPABASE
     function prepararFormularioRegistro() {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('reg_fecha_registro').value = today;
@@ -926,7 +890,6 @@ function normalizarColumnas(rows, tabla) {
       document.getElementById('reg_rechazo_badge').className = "px-3 py-2 rounded-lg text-xs font-bold bg-gray-800 text-gray-400 border border-gray-700 text-center";
     }
 
-    // HISTORIAL DESDE SUPABASE CLOUD
     async function renderTablaHistorial() {
       const tbody = document.getElementById('tbody-historial');
       tbody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-gray-400">Cargando registros desde Supabase Cloud...</td></tr>';
@@ -1002,7 +965,6 @@ function normalizarColumnas(rows, tabla) {
       XLSX.writeFile(wb, `Historial_ERI_Nexocorp_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
 
-    // DASHBOARD DESDE SUPABASE CLOUD
     async function renderDashboardCharts() {
       if (!supabaseClient) return;
 
@@ -1040,7 +1002,6 @@ function normalizarColumnas(rows, tabla) {
       document.getElementById('kpi-costo-faltantes').textContent = `$${cFaltantes.toFixed(2)}`;
       document.getElementById('kpi-impacto-neto').textContent = `$${(cSobrantes - cFaltantes).toFixed(2)}`;
 
-      // 1. Top Errores Usuario
       const userErrors = {};
       filtered.filter(d => d.error_picking === 'SI').forEach(d => {
         const u = d.usuario_picking || 'SIN USUARIO';
@@ -1058,7 +1019,6 @@ function normalizarColumnas(rows, tabla) {
         options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
       });
 
-      // 2. Consolidado por Bodega
       const bodegaCounts = {};
       filtered.forEach(d => {
         const b = d.bodega || 'N/A';
@@ -1075,7 +1035,6 @@ function normalizarColumnas(rows, tabla) {
         options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
       });
 
-      // 3. Ubicaciones Picking
       const locPrefixes = {};
       filtered.forEach(d => {
         const loc = d.ubicacion_picking || '';
@@ -1093,7 +1052,6 @@ function normalizarColumnas(rows, tabla) {
         options: { responsive: true, maintainAspectRatio: false }
       });
 
-      // 4. Top Productos
       const prodCounts = {};
       filtered.forEach(d => {
         const p = d.codigo || 'S/C';
@@ -1111,7 +1069,6 @@ function normalizarColumnas(rows, tabla) {
         options: { responsive: true, maintainAspectRatio: false }
       });
 
-      // 5. Barras y Líneas
       const monthlyTotal = {};
       const monthlyErrors = {};
 
@@ -1139,7 +1096,6 @@ function normalizarColumnas(rows, tabla) {
       });
     }
 
-    // UTILS
     function downloadTemplate(tipo) {
       let headers = [];
       if (tipo === 'costos') headers = [['codigo', 'descripcion', 'unidad_medida', 'costo_unitario']];
