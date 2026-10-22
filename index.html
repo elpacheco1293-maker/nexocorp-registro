@@ -227,10 +227,16 @@
     <!-- PESTAÑA 2: PLANILLA DE REGISTRO -->
     <section id="section-registro" class="tab-content hidden space-y-6">
       <div class="glow-card bg-gray-900 p-6 rounded-2xl border border-gray-800">
-        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-          Ingreso de Registro ERI
-        </h2>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            Ingreso de Registro ERI
+          </h2>
+          <div id="manualModeIndicator" class="text-xs px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-semibold hidden flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            Modo Edición Manual Activo
+          </div>
+        </div>
 
         <!-- BÚSQUEDA / ENTRADA PRINCIPAL -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-950 border border-violet-500/20 mb-6">
@@ -244,58 +250,58 @@
           </div>
         </div>
 
-        <!-- FORMULARIO AUTOCOMPLETADO -->
+        <!-- FORMULARIO AUTOCOMPLETADO O MANUAL -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Fecha Registro</label>
-            <input type="text" id="reg_fecha_registro" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-400 font-mono">
+            <input type="date" id="reg_fecha_registro" class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Descripción Producto</label>
-            <input type="text" id="reg_descripcion" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
+            <input type="text" id="reg_descripcion" readonly class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Cantidad Enviada</label>
-            <input type="text" id="reg_cantidad_enviada" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+            <input type="number" id="reg_cantidad_enviada" readonly class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
           </div>
 
           <div>
             <label class="block text-xs text-gray-400 mb-1">Bodega</label>
-            <input type="text" id="reg_bodega" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
+            <input type="text" id="reg_bodega" readonly class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Ubicación Picking</label>
-            <input type="text" id="reg_ubicacion_picking" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+            <input type="text" id="reg_ubicacion_picking" readonly class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Usuario Picking</label>
-            <input type="text" id="reg_usuario_picking" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
+            <input type="text" id="reg_usuario_picking" readonly class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
           </div>
 
           <div>
             <label class="block text-xs text-gray-400 mb-1">Fecha Picking</label>
-            <input type="text" id="reg_fecha_picking" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+            <input type="date" id="reg_fecha_picking" readonly onchange="evaluarRechazoFecha()" class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Nro DIRCA</label>
-            <input type="text" id="reg_nro_dirca" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+            <input type="text" id="reg_nro_dirca" readonly class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Tipo Diferencia</label>
-            <input type="text" id="reg_tipo_diferencia" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
+            <input type="text" id="reg_tipo_diferencia" readonly class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300">
           </div>
 
           <div>
             <label class="block text-xs text-gray-400 mb-1">Cantidad Diferencia</label>
-            <input type="text" id="reg_cantidad_diferencia" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+            <input type="number" id="reg_cantidad_diferencia" readonly oninput="calcularCostoTotalManual()" class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Costo Unitario ($)</label>
-            <input type="text" id="reg_costo_unitario" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
+            <input type="number" step="0.01" id="reg_costo_unitario" readonly oninput="calcularCostoTotalManual()" class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Costo Total ($)</label>
-            <input type="text" id="reg_costo_total" readonly class="w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-cyan-400 font-bold font-mono">
+            <input type="number" step="0.01" id="reg_costo_total" readonly class="reg-field w-full bg-gray-950/60 border border-gray-800 rounded-lg px-3 py-2 text-sm text-cyan-400 font-bold font-mono">
           </div>
 
           <div>
@@ -315,14 +321,19 @@
           </div>
         </div>
 
-        <div class="mt-6 flex justify-end gap-4">
-          <button onclick="limpiarFormularioRegistro()" class="px-5 py-2.5 rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 text-sm font-semibold">
-            Limpiar
-          </button>
-          <button onclick="guardarRegistroERI()" class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 text-white text-sm font-bold shadow-lg flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            Guardar Registro
-          </button>
+        <div class="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div class="text-xs text-gray-400 italic">
+            * Si las bases de datos no contienen información para este producto, los campos se desbloquearán automáticamente para que los completes en forma manual.
+          </div>
+          <div class="flex gap-4">
+            <button onclick="limpiarFormularioRegistro()" class="px-5 py-2.5 rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 text-sm font-semibold">
+              Limpiar
+            </button>
+            <button onclick="guardarRegistroERI()" class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 text-white text-sm font-bold shadow-lg flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Guardar Registro
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -498,9 +509,9 @@
 
   <!-- LÓGICA DE APLICACIÓN EN JAVASCRIPT -->
   <script>
-    // CREDENCIALES FIJAS AUTOMÁTICAS PARA LA NUBE
+    // CREDENCIALES REALES DE SUPABASE CLOUD
     const SUPABASE_URL = 'https://gwalwtithisyiqirpomy.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3YWx3dGl0aGlzeWlxaXJwb215Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MDMxMjksImV4cCI6MjEwODE3OTEyOX0.PqUtLnTpb5W0p26Ywvxc11M3oP8fOTd3sFTaBewtUZM'; // Se usa tu clave anon activa
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3YWx3dGl0aGlzeWlxaXJwb215Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAzODU0MTYsImV4cCI6MjA1NTk2MTQxNn0.7U4_uHq_v4b_9Zk_m5q_3Xz_1K8_5P2_4W6_8Y3_0L9';
 
     // ESTADO DE SUPABASE
     let supabaseClient = null;
@@ -532,7 +543,7 @@
       if (tabId === 'carga') actualizarContadoresCloud();
     }
 
-    // CONFIGURACIÓN SUPABASE CLOUD (AUTOMÁTICA)
+    // CONFIGURACIÓN SUPABASE CLOUD
     function initSupabase() {
       const urlInput = document.getElementById('cfg_url');
       const keyInput = document.getElementById('cfg_key');
@@ -540,7 +551,7 @@
       if(urlInput) urlInput.value = SUPABASE_URL;
       if(keyInput) keyInput.value = SUPABASE_ANON_KEY;
 
-      if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
+      if (SUPABASE_URL && SUPABASE_URL.startsWith('http') && window.supabase) {
         try {
           supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
           setSupabaseStatus(true, "Supabase Cloud: Conectado Automáticamente");
@@ -766,6 +777,7 @@
       await enviarLotesASupabaseCloud(tabla, demoRows);
     }
 
+    // REGISTRO ERI Y AUTOCOMPLETADO / MODO MANUAL
     function prepararFormularioRegistro() {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('reg_fecha_registro').value = today;
@@ -775,51 +787,121 @@
       const cod = document.getElementById('reg_codigo').value.trim();
       const crgLpn = document.getElementById('reg_carga_lpn').value.trim();
 
-      if (!cod || !crgLpn || !supabaseClient) return;
-
-      const [rPicking, rCosto, rDirca] = await Promise.all([
-        supabaseClient.from('bd_carga_picking').select('*').eq('codigo', cod).or(`nro_carga.eq.${crgLpn},nro_lpn.eq.${crgLpn}`).limit(1),
-        supabaseClient.from('bd_costos').select('*').eq('codigo', cod).limit(1),
-        supabaseClient.from('bd_dirca').select('*').eq('codigo', cod).eq('nro_carga', crgLpn).limit(1)
-      ]);
-
-      const matchPicking = rPicking.data?.[0];
-      const matchCosto = rCosto.data?.[0];
-      const matchDirca = rDirca.data?.[0];
-
-      document.getElementById('reg_descripcion').value = matchPicking?.descripcion || matchCosto?.descripcion || '';
-      document.getElementById('reg_cantidad_enviada').value = matchPicking?.cantidad_enviada || 0;
-      document.getElementById('reg_bodega').value = matchPicking?.bodega || '';
-      document.getElementById('reg_ubicacion_picking').value = matchPicking?.ubicacion_picking || '';
-      document.getElementById('reg_usuario_picking').value = matchPicking?.usuario_picking || '';
-      document.getElementById('reg_fecha_picking').value = matchPicking?.fecha_picking || '';
-
-      const cUnit = parseFloat(matchCosto?.costo_unitario || 0);
-      document.getElementById('reg_costo_unitario').value = cUnit.toFixed(2);
-
-      let tipoDif = matchDirca?.tipo_diferencia || 'faltante';
-      let cantDifRaw = Math.abs(parseFloat(matchDirca?.cantidad_diferencia || 0));
-
-      let cantDif = cantDifRaw;
-      if (String(tipoDif).toLowerCase().includes('sobrante')) {
-        cantDif = -Math.abs(cantDifRaw);
-      } else {
-        cantDif = Math.abs(cantDifRaw);
+      if (!cod || !crgLpn) {
+        toggleModoManual(true);
+        return;
       }
 
-      document.getElementById('reg_tipo_diferencia').value = tipoDif;
-      document.getElementById('reg_cantidad_diferencia').value = cantDif;
-      document.getElementById('reg_nro_dirca').value = matchDirca?.nro_dirca || '';
+      if (!supabaseClient) {
+        toggleModoManual(true);
+        return;
+      }
 
-      const cTotal = Math.abs(cantDif) * cUnit;
-      document.getElementById('reg_costo_total').value = cTotal.toFixed(2);
+      try {
+        const [rPicking, rCosto, rDirca] = await Promise.all([
+          supabaseClient.from('bd_carga_picking').select('*').eq('codigo', cod).or(`nro_carga.eq.${crgLpn},nro_lpn.eq.${crgLpn}`).limit(1),
+          supabaseClient.from('bd_costos').select('*').eq('codigo', cod).limit(1),
+          supabaseClient.from('bd_dirca').select('*').eq('codigo', cod).eq('nro_carga', crgLpn).limit(1)
+        ]);
 
-      if (matchPicking?.fecha_picking) {
-        const fReg = new Date(document.getElementById('reg_fecha_registro').value);
-        const fPick = new Date(matchPicking.fecha_picking);
+        const matchPicking = rPicking.data?.[0];
+        const matchCosto = rCosto.data?.[0];
+        const matchDirca = rDirca.data?.[0];
+
+        // Si no encuentra nada en la nube, habilita el modo manual
+        if (!matchPicking && !matchCosto && !matchDirca) {
+          toggleModoManual(true);
+          return;
+        }
+
+        // Si encuentra coincidencia, autocompleta y bloquea
+        toggleModoManual(false);
+
+        document.getElementById('reg_descripcion').value = matchPicking?.descripcion || matchCosto?.descripcion || '';
+        document.getElementById('reg_cantidad_enviada').value = matchPicking?.cantidad_enviada || 0;
+        document.getElementById('reg_bodega').value = matchPicking?.bodega || '';
+        document.getElementById('reg_ubicacion_picking').value = matchPicking?.ubicacion_picking || '';
+        document.getElementById('reg_usuario_picking').value = matchPicking?.usuario_picking || '';
+        document.getElementById('reg_fecha_picking').value = matchPicking?.fecha_picking || '';
+
+        const cUnit = parseFloat(matchCosto?.costo_unitario || 0);
+        document.getElementById('reg_costo_unitario').value = cUnit.toFixed(2);
+
+        let tipoDif = matchDirca?.tipo_diferencia || 'faltante';
+        let cantDifRaw = Math.abs(parseFloat(matchDirca?.cantidad_diferencia || 0));
+
+        let cantDif = cantDifRaw;
+        if (String(tipoDif).toLowerCase().includes('sobrante')) {
+          cantDif = -Math.abs(cantDifRaw);
+        } else {
+          cantDif = Math.abs(cantDifRaw);
+        }
+
+        document.getElementById('reg_tipo_diferencia').value = tipoDif;
+        document.getElementById('reg_cantidad_diferencia').value = cantDif;
+        document.getElementById('reg_nro_dirca').value = matchDirca?.nro_dirca || '';
+
+        const cTotal = Math.abs(cantDif) * cUnit;
+        document.getElementById('reg_costo_total').value = cTotal.toFixed(2);
+
+        evaluarRechazoFecha();
+      } catch (err) {
+        console.warn("Error en autocompletado, activando modo manual:", err);
+        toggleModoManual(true);
+      }
+    }
+
+    // ACTIVA / DESACTIVA EDICIÓN MANUAL
+    function toggleModoManual(enable) {
+      const fieldIds = [
+        'reg_descripcion', 'reg_cantidad_enviada', 'reg_bodega',
+        'reg_ubicacion_picking', 'reg_usuario_picking', 'reg_fecha_picking',
+        'reg_nro_dirca', 'reg_tipo_diferencia', 'reg_cantidad_diferencia',
+        'reg_costo_unitario', 'reg_costo_total'
+      ];
+
+      const indicator = document.getElementById('manualModeIndicator');
+
+      if (enable) {
+        fieldIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.removeAttribute('readonly');
+            el.classList.remove('bg-gray-950/60', 'border-gray-800');
+            el.classList.add('bg-gray-900', 'border-cyan-500/50', 'focus:border-cyan-400');
+          }
+        });
+        if (indicator) indicator.classList.remove('hidden');
+      } else {
+        fieldIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.setAttribute('readonly', 'readonly');
+            el.classList.remove('bg-gray-900', 'border-cyan-500/50', 'focus:border-cyan-400');
+            el.classList.add('bg-gray-950/60', 'border-gray-800');
+          }
+        });
+        if (indicator) indicator.classList.add('hidden');
+      }
+    }
+
+    function calcularCostoTotalManual() {
+      const cant = Math.abs(parseFloat(document.getElementById('reg_cantidad_diferencia').value || 0));
+      const unit = parseFloat(document.getElementById('reg_costo_unitario').value || 0);
+      const total = cant * unit;
+      document.getElementById('reg_costo_total').value = total.toFixed(2);
+    }
+
+    function evaluarRechazoFecha() {
+      const fRegVal = document.getElementById('reg_fecha_registro').value;
+      const fPickVal = document.getElementById('reg_fecha_picking').value;
+      const badge = document.getElementById('reg_rechazo_badge');
+
+      if (fPickVal && fRegVal) {
+        const fReg = new Date(fRegVal);
+        const fPick = new Date(fPickVal);
         const diffDays = Math.floor((fReg - fPick) / (1000 * 60 * 60 * 24));
 
-        const badge = document.getElementById('reg_rechazo_badge');
         if (diffDays > 45) {
           badge.textContent = `RECHAZAR (${diffDays} días)`;
           badge.className = "px-3 py-2 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 text-center animate-pulse";
@@ -827,6 +909,9 @@
           badge.textContent = `ACEPTAR (${diffDays} días)`;
           badge.className = "px-3 py-2 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-center";
         }
+      } else {
+        badge.textContent = 'Pendiente';
+        badge.className = "px-3 py-2 rounded-lg text-xs font-bold bg-gray-800 text-gray-400 border border-gray-700 text-center";
       }
     }
 
@@ -838,7 +923,7 @@
       const errPicking = document.getElementById('reg_error_picking').value;
 
       if (!codigo || !cargaLpn || !errPicking) {
-        return alert("Por favor complete los campos: Código, Nro Carga/LPN y selecciones si es Error Picking.");
+        return alert("Por favor complete los campos obligatorios: Código, Nro Carga/LPN y si es Error Picking.");
       }
 
       const nuevoRegistro = {
@@ -888,6 +973,7 @@
       document.getElementById('reg_error_picking').value = '';
       document.getElementById('reg_rechazo_badge').textContent = 'Pendiente';
       document.getElementById('reg_rechazo_badge').className = "px-3 py-2 rounded-lg text-xs font-bold bg-gray-800 text-gray-400 border border-gray-700 text-center";
+      toggleModoManual(false);
     }
 
     async function renderTablaHistorial() {
