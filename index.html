@@ -516,7 +516,7 @@
 
     // ESTADO DE SUPABASE Y EDICIÓN
     let supabaseClient = null;
-    let editandoId = null; // Almacena el ID si estamos modificando un registro existente
+    let editandoId = null;
 
     // INSTANCIAS DE CHARTS
     let chart1Obj = null, chart2Obj = null, chart3Obj = null, chart4Obj = null, chart5Obj = null;
@@ -781,11 +781,14 @@
 
     // REGISTRO ERI Y AUTOCOMPLETADO / MODO MANUAL
     function prepararFormularioRegistro() {
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('reg_fecha_registro').value = today;
+      if (!editandoId) {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('reg_fecha_registro').value = today;
+      }
     }
 
     async function autoCompletarFormulario() {
+      if (editandoId) return; // Si estamos editando, no sobrescribir con autocompletado en blanco
       const cod = document.getElementById('reg_codigo').value.trim();
       const crgLpn = document.getElementById('reg_carga_lpn').value.trim();
 
@@ -810,13 +813,11 @@
         const matchCosto = rCosto.data?.[0];
         const matchDirca = rDirca.data?.[0];
 
-        // Si no encuentra nada en la nube, habilita el modo manual
         if (!matchPicking && !matchCosto && !matchDirca) {
           toggleModoManual(true);
           return;
         }
 
-        // Si encuentra coincidencia, autocompleta y bloquea
         toggleModoManual(false);
 
         document.getElementById('reg_descripcion').value = matchPicking?.descripcion || matchCosto?.descripcion || '';
@@ -917,7 +918,7 @@
       }
     }
 
-    // GUARDAR O MODIFICAR REGISTRO CON VALIDACIÓN DE DUPLICADOS POR NRO DIRCA
+    // GUARDAR O MODIFICAR REGISTRO
     async function guardarRegistroERI() {
       if (!supabaseClient) return alert("Conecte Supabase para guardar registros.");
 
@@ -930,7 +931,6 @@
         return alert("Por favor complete los campos obligatorios: Código, Nro Carga/LPN y si es Error Picking.");
       }
 
-      // Validar duplicado por Nro DIRCA si no estamos editando el mismo registro actual
       if (nroDirca) {
         let queryCheck = supabaseClient.from('registros_eri').select('id').eq('nro_dirca', nroDirca);
         if (editandoId) {
@@ -944,7 +944,7 @@
       }
 
       const registroData = {
-        fecha_registro: document.getElementById('reg_fecha_registro').value,
+        fecha_registro: document.getElementById('reg_fecha_registro').value || null,
         codigo: codigo,
         descripcion: document.getElementById('reg_descripcion').value,
         nro_carga_lpn: cargaLpn,
@@ -963,7 +963,6 @@
       };
 
       if (editandoId) {
-        // Actualizar registro existente
         const { error } = await supabaseClient.from('registros_eri').update(registroData).eq('id', editandoId);
         if (error) {
           alert("Error al actualizar el registro: " + error.message);
@@ -971,7 +970,6 @@
         }
         alert("¡Registro ERI modificado y actualizado correctamente en la nube!");
       } else {
-        // Insertar nuevo registro
         const { error } = await supabaseClient.from('registros_eri').insert([registroData]);
         if (error) {
           alert("Error al guardar registro en Supabase: " + error.message);
@@ -1013,7 +1011,7 @@
       prepararFormularioRegistro();
     }
 
-    // CARGAR DATOS EN EL FORMULARIO PARA MODIFICAR
+    // CARGAR DATOS COMPLETOS EN EL FORMULARIO PARA MODIFICAR
     async function prepararModificacion(id) {
       if (!supabaseClient) return;
       const { data, error } = await supabaseClient.from('registros_eri').select('*').eq('id', id).single();
@@ -1024,19 +1022,17 @@
 
       editandoId = data.id;
       document.getElementById('reg_codigo').value = data.codigo || '';
-      document.getElementById('reg_codigo').setAttribute('readonly', 'readonly'); // Evitar alterar llave primaria clave
       document.getElementById('reg_carga_lpn').value = data.nro_carga_lpn || '';
-      document.getElementById('reg_carga_lpn').setAttribute('readonly', 'readonly');
 
-      toggleModoManual(true); // Abrir campos para permitir editar
+      toggleModoManual(true); // Abrir todos los campos para permitir edición completa
 
-      document.getElementById('reg_fecha_registro').value = data.fecha_registro || '';
+      document.getElementById('reg_fecha_registro').value = data.fecha_registro ? data.fecha_registro.substring(0, 10) : '';
       document.getElementById('reg_descripcion').value = data.descripcion || '';
       document.getElementById('reg_cantidad_enviada').value = data.cantidad_enviada || 0;
       document.getElementById('reg_bodega').value = data.bodega || '';
       document.getElementById('reg_ubicacion_picking').value = data.ubicacion_picking || '';
       document.getElementById('reg_usuario_picking').value = data.usuario_picking || '';
-      document.getElementById('reg_fecha_picking').value = data.fecha_picking || '';
+      document.getElementById('reg_fecha_picking').value = data.fecha_picking ? data.fecha_picking.substring(0, 10) : '';
       document.getElementById('reg_nro_dirca').value = data.nro_dirca || '';
       document.getElementById('reg_tipo_diferencia').value = data.tipo_diferencia || '';
       document.getElementById('reg_cantidad_diferencia').value = data.cantidad_diferencia || 0;
@@ -1046,14 +1042,12 @@
 
       evaluarRechazoFecha();
 
-      // Cambiar título visual y botón
       document.getElementById('formTitle').innerHTML = `<svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> Modificar Registro ERI (ID: ${data.id})`;
       document.getElementById('btnGuardarRegistro').textContent = "Actualizar Cambios";
 
       tabSwitch('registro');
     }
 
-    // ELIMINAR REGISTRO DEL HISTORIAL
     async function eliminarRegistro(id) {
       if (!supabaseClient) return;
       const confirmar = confirm("¿Estás seguro de que deseas eliminar este registro ERI del historial?");
@@ -1069,7 +1063,6 @@
       renderTablaHistorial();
     }
 
-    // HISTORIAL DESDE SUPABASE CLOUD
     async function renderTablaHistorial() {
       const tbody = document.getElementById('tbody-historial');
       tbody.innerHTML = '<tr><td colspan="13" class="p-4 text-center text-gray-400">Cargando registros desde Supabase Cloud...</td></tr>';
@@ -1109,7 +1102,7 @@
         const tr = document.createElement('tr');
         tr.className = "hover:bg-gray-800/50 transition border-b border-gray-800/50";
         tr.innerHTML = `
-          <td class="p-3 font-mono">${row.fecha_registro || ''}</td>
+          <td class="p-3 font-mono">${row.fecha_registro ? row.fecha_registro.substring(0, 10) : ''}</td>
           <td class="p-3 font-bold text-violet-400">${row.codigo || ''}</td>
           <td class="p-3 font-mono">${row.nro_carga_lpn || ''}</td>
           <td class="p-3">${row.bodega || ''}</td>
