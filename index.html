@@ -249,7 +249,8 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1 tracking-wider uppercase">NRO DE CARGA O NRO LPN *</label>
-            <input type="text" id="reg_carga_lpn" oninput="autoCompletarFormulario()" placeholder="Ej: CRG-8801 o LPN-9001" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-violet-500 font-mono tracking-wide">
+            <input type="text" id="reg_carga_lpn" oninput="autoCompletarFormulario(); verificarCargaAuditada()" placeholder="Ej: CRG-8801 o LPN-9001" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-violet-500 font-mono tracking-wide">
+          <div id="avisoAuditada" class="hidden mt-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-300" role="status"></div>
           </div>
         </div>
 
@@ -872,6 +873,34 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
       }
     }
 
+    // ---- Aviso: carga ya auditada en Incidencias Calidad (usa la función carga_auditada de Supabase) ----
+    let _tAudit = null, _seqAudit = 0;
+    function ocultarAvisoAuditada() {
+      const box = document.getElementById('avisoAuditada');
+      if (box) { box.classList.add('hidden'); box.textContent = ''; }
+    }
+    function verificarCargaAuditada() {
+      clearTimeout(_tAudit);
+      const v = document.getElementById('reg_carga_lpn').value.trim();
+      if (!v || !supabaseClient) { ocultarAvisoAuditada(); return; }
+      const mi = ++_seqAudit;
+      _tAudit = setTimeout(async () => {
+        try {
+          const { data, error } = await supabaseClient.rpc('carga_auditada', { p_valor: v });
+          if (mi !== _seqAudit) return; // llegó una respuesta vieja
+          if (error) { console.warn('carga_auditada:', error.message); ocultarAvisoAuditada(); return; }
+          const r = Array.isArray(data) ? data[0] : data;
+          if (!r) { ocultarAvisoAuditada(); return; }
+          const f = d => d ? String(d).split('-').reverse().join('/') : '';
+          const cuando = r.primera_fecha === r.ultima_fecha ? 'el ' + f(r.ultima_fecha) : 'entre el ' + f(r.primera_fecha) + ' y el ' + f(r.ultima_fecha);
+          const inc = Number(r.incidencias) > 0 ? Number(r.incidencias) + ' incidencia(s) registrada(s)' : 'sin incidencias registradas';
+          const box = document.getElementById('avisoAuditada');
+          box.textContent = '⚠ Esta carga/LPN ya fue AUDITADA ' + cuando + ' (' + r.lineas + ' línea(s), ' + inc + ').';
+          box.classList.remove('hidden');
+        } catch (e) { console.warn('carga_auditada:', e); ocultarAvisoAuditada(); }
+      }, 400);
+    }
+
     async function autoCompletarFormulario() {
       if (editandoId) return;
       const cod = document.getElementById('reg_codigo').value.trim();
@@ -1071,6 +1100,7 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
       editandoId = null;
       document.getElementById('reg_codigo').value = '';
       document.getElementById('reg_carga_lpn').value = '';
+      ocultarAvisoAuditada();
       document.getElementById('reg_codigo').removeAttribute('readonly');
       document.getElementById('reg_carga_lpn').removeAttribute('readonly');
       
