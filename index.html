@@ -294,6 +294,10 @@
             <input type="text" id="reg_descripcion" readonly class="reg-field w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300">
           </div>
           <div>
+            <label class="block text-[11px] text-slate-400 mb-1 font-semibold uppercase">Nro LPN</label>
+            <input type="text" id="reg_nro_lpn" readonly class="reg-field w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 font-mono">
+          </div>
+          <div>
             <label class="block text-[11px] text-slate-400 mb-1 font-semibold uppercase">Cantidad Enviada</label>
             <input type="number" id="reg_cantidad_enviada" readonly class="reg-field w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 font-mono">
           </div>
@@ -392,7 +396,7 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 mb-6">
           <div>
             <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Buscar por Código / DIRCA</label>
-            <input type="text" id="filter_search" oninput="aplicarFiltrosHistorial()" placeholder="Ej: PROD-1001 o DIRCA-001" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none">
+            <input type="text" id="filter_search" oninput="aplicarFiltrosHistorial()" placeholder="Código, DIRCA, LPN o descripción" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none">
           </div>
           <div>
             <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Fecha Desde (Registro)</label>
@@ -416,7 +420,9 @@
               <tr>
                 <th class="p-3.5">Fecha Reg.</th>
                 <th class="p-3.5">Código</th>
+                <th class="p-3.5">Descripción</th>
                 <th class="p-3.5">Carga / LPN</th>
+                <th class="p-3.5">Nro LPN</th>
                 <th class="p-3.5">Bodega</th>
                 <th class="p-3.5">Ubicación</th>
                 <th class="p-3.5">Usuario</th>
@@ -933,10 +939,12 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
       }, 400);
     }
 
+    let _seqAuto = 0, pickerList = [], pickerCtx = null;
     async function autoCompletarFormulario() {
       if (editandoId) return;
       const cod = document.getElementById('reg_codigo').value.trim();
       const crgLpn = document.getElementById('reg_carga_lpn').value.trim();
+      const mySeq = ++_seqAuto;
 
       if (!cod || !crgLpn) {
         toggleModoManual(true);
@@ -950,59 +958,110 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
 
       try {
         const [rPicking, rCosto, rDirca] = await Promise.all([
-          supabaseClient.from('bd_carga_picking').select('*').eq('codigo', cod).or(`nro_carga.eq.${crgLpn},nro_lpn.eq.${crgLpn}`).limit(1),
+          supabaseClient.from('bd_carga_picking').select('*').eq('codigo', cod).or(`nro_carga.eq.${crgLpn},nro_lpn.eq.${crgLpn}`).limit(30),
           supabaseClient.from('bd_costos').select('*').eq('codigo', cod).limit(1),
           supabaseClient.from('bd_dirca').select('*').eq('codigo', cod).eq('nro_carga', crgLpn).limit(1)
         ]);
+        if (mySeq !== _seqAuto) return; // el usuario siguió escribiendo: respuesta vieja
 
-        const matchPicking = rPicking.data?.[0];
+        const lista = rPicking.data || [];
         const matchCosto = rCosto.data?.[0];
         const matchDirca = rDirca.data?.[0];
 
-        if (!matchPicking && !matchCosto && !matchDirca) {
-          toggleModoManual(true);
+        // Varios registros de picking para el mismo código y carga/LPN: que el usuario elija
+        if (lista.length > 1) {
+          pickerList = lista;
+          pickerCtx = { cod: cod, matchCosto: matchCosto, matchDirca: matchDirca };
+          abrirSelectorPicking();
           return;
         }
-
-        toggleModoManual(false);
-
-        document.getElementById('reg_descripcion').value = matchPicking?.descripcion || matchCosto?.descripcion || '';
-        document.getElementById('reg_cantidad_enviada').value = matchPicking?.cantidad_enviada || 0;
-        document.getElementById('reg_bodega').value = matchPicking?.bodega || '';
-        document.getElementById('reg_ubicacion_picking').value = matchPicking?.ubicacion_picking || '';
-        document.getElementById('reg_usuario_picking').value = matchPicking?.usuario_picking || '';
-        document.getElementById('reg_fecha_picking').value = matchPicking?.fecha_picking || '';
-
-        const cUnit = parseFloat(matchCosto?.costo_unitario || 0);
-        document.getElementById('reg_costo_unitario').value = cUnit.toFixed(2);
-
-        let tipoDif = matchDirca?.tipo_diferencia || 'faltante';
-        let cantDifRaw = Math.abs(parseFloat(matchDirca?.cantidad_diferencia || 0));
-
-        let cantDif = cantDifRaw;
-        if (String(tipoDif).toLowerCase().includes('sobrante')) {
-          cantDif = -Math.abs(cantDifRaw);
-        } else {
-          cantDif = Math.abs(cantDifRaw);
-        }
-
-        document.getElementById('reg_tipo_diferencia').value = tipoDif;
-        document.getElementById('reg_cantidad_diferencia').value = cantDif;
-        document.getElementById('reg_nro_dirca').value = matchDirca?.nro_dirca || '';
-
-        const cTotal = Math.abs(cantDif) * cUnit;
-        document.getElementById('reg_costo_total').value = cTotal.toFixed(2);
-
-        evaluarRechazoFecha();
+        aplicarAutocompletado(lista[0], matchCosto, matchDirca);
       } catch (err) {
         console.warn("Error en autocompletado, activando modo manual:", err);
         toggleModoManual(true);
       }
     }
 
+    function aplicarAutocompletado(matchPicking, matchCosto, matchDirca) {
+      if (!matchPicking && !matchCosto && !matchDirca) {
+        toggleModoManual(true);
+        return;
+      }
+
+      toggleModoManual(false);
+
+      document.getElementById('reg_descripcion').value = matchPicking?.descripcion || matchCosto?.descripcion || '';
+      document.getElementById('reg_nro_lpn').value = matchPicking?.nro_lpn || '';
+      document.getElementById('reg_cantidad_enviada').value = matchPicking?.cantidad_enviada || 0;
+      document.getElementById('reg_bodega').value = matchPicking?.bodega || '';
+      document.getElementById('reg_ubicacion_picking').value = matchPicking?.ubicacion_picking || '';
+      document.getElementById('reg_usuario_picking').value = matchPicking?.usuario_picking || '';
+      document.getElementById('reg_fecha_picking').value = matchPicking?.fecha_picking || '';
+
+      const cUnit = parseFloat(matchCosto?.costo_unitario || 0);
+      document.getElementById('reg_costo_unitario').value = cUnit.toFixed(2);
+
+      let tipoDif = matchDirca?.tipo_diferencia || 'faltante';
+      let cantDifRaw = Math.abs(parseFloat(matchDirca?.cantidad_diferencia || 0));
+
+      let cantDif = cantDifRaw;
+      if (String(tipoDif).toLowerCase().includes('sobrante')) {
+        cantDif = -Math.abs(cantDifRaw);
+      } else {
+        cantDif = Math.abs(cantDifRaw);
+      }
+
+      document.getElementById('reg_tipo_diferencia').value = tipoDif;
+      document.getElementById('reg_cantidad_diferencia').value = cantDif;
+      document.getElementById('reg_nro_dirca').value = matchDirca?.nro_dirca || '';
+
+      const cTotal = Math.abs(cantDif) * cUnit;
+      document.getElementById('reg_costo_total').value = cTotal.toFixed(2);
+
+      evaluarRechazoFecha();
+    }
+
+    // ---------- ventana para elegir entre varios registros de picking ----------
+    function abrirSelectorPicking() {
+      const esc = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const v = x => (x === null || x === undefined || x === '') ? '—' : esc(x);
+      const first = pickerList[0] || {};
+      document.getElementById('pk_info').innerHTML = `<b class="text-slate-200">${esc(pickerCtx.cod)}</b> · ${esc(first.descripcion || '')}`;
+      document.getElementById('pk_titulo').textContent = `Se encontraron ${pickerList.length} registros de picking`;
+      document.getElementById('pk_lista').innerHTML = pickerList.map((r, i) => `
+        <button type="button" onclick="elegirPicking(${i})" class="w-full text-left bg-slate-900 border border-slate-800 hover:border-violet-500 rounded-xl px-4 py-3 transition">
+          <div class="flex justify-between items-center gap-3">
+            <span class="font-mono text-sm font-bold text-white">${v(r.nro_lpn)}</span>
+            <span class="text-[11px] text-slate-400 font-mono">${v(r.fecha_picking)}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-[11px] text-slate-400">
+            <div>Ubicación: <b class="text-slate-200">${v(r.ubicacion_picking)}</b></div>
+            <div>Usuario: <b class="text-slate-200">${v(r.usuario_picking)}</b></div>
+            <div>Cant. enviada: <b class="text-slate-200">${v(r.cantidad_enviada)}</b></div>
+            <div>Bodega: <b class="text-slate-200">${v(r.bodega)}</b></div>
+            ${r.lote ? `<div>Lote: <b class="text-slate-200">${v(r.lote)}</b></div>` : ''}
+          </div>
+        </button>`).join('');
+      abrirModal('modalPicking');
+    }
+    async function elegirPicking(i) {
+      const sel = pickerList[i]; if (!sel || !pickerCtx) return;
+      cerrarModal('modalPicking');
+      let dirca = pickerCtx.matchDirca;
+      // si escribió un LPN, el DIRCA se busca con la carga del registro elegido
+      if (!dirca && sel.nro_carga && supabaseClient) {
+        try {
+          const r = await supabaseClient.from('bd_dirca').select('*').eq('codigo', pickerCtx.cod).eq('nro_carga', sel.nro_carga).limit(1);
+          dirca = r.data?.[0];
+        } catch (e) { console.warn(e); }
+      }
+      aplicarAutocompletado(sel, pickerCtx.matchCosto, dirca);
+    }
+    function pickerManual() { cerrarModal('modalPicking'); toggleModoManual(true); }
+
     function toggleModoManual(enable) {
       const fieldIds = [
-        'reg_descripcion', 'reg_cantidad_enviada', 'reg_bodega',
+        'reg_descripcion', 'reg_nro_lpn', 'reg_cantidad_enviada', 'reg_bodega',
         'reg_ubicacion_picking', 'reg_usuario_picking', 'reg_fecha_picking',
         'reg_nro_dirca', 'reg_tipo_diferencia', 'reg_cantidad_diferencia',
         'reg_costo_unitario', 'reg_costo_total'
@@ -1093,6 +1152,7 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
         fecha_registro: document.getElementById('reg_fecha_registro').value || null,
         codigo: codigo,
         descripcion: document.getElementById('reg_descripcion').value,
+        nro_lpn: document.getElementById('reg_nro_lpn').value.trim() || null,
         nro_carga_lpn: cargaLpn,
         cantidad_enviada: parseFloat(document.getElementById('reg_cantidad_enviada').value || 0),
         bodega: document.getElementById('reg_bodega').value,
@@ -1108,21 +1168,22 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
         error_picking: errPicking
       };
 
-      if (editandoId) {
-        const { error } = await supabaseClient.from('registros_eri').update(registroData).eq('id', editandoId);
-        if (error) {
-          alert("Error al actualizar el registro: " + error.message);
-          return;
-        }
-        alert("¡Registro ERI modificado y actualizado correctamente en la nube!");
-      } else {
-        const { error } = await supabaseClient.from('registros_eri').insert([registroData]);
-        if (error) {
-          alert("Error al guardar registro en Supabase: " + error.message);
-          return;
-        }
-        alert("¡Registro ERI guardado correctamente en la nube!");
+      const guardar = d => editandoId
+        ? supabaseClient.from('registros_eri').update(d).eq('id', editandoId)
+        : supabaseClient.from('registros_eri').insert([d]);
+      let { error } = await guardar(registroData);
+      let sinLpn = false;
+      if (error && /nro_lpn/i.test(error.message || '')) {
+        // La columna nro_lpn aún no existe en Supabase: se guarda igual, sin el LPN
+        delete registroData.nro_lpn; sinLpn = true;
+        ({ error } = await guardar(registroData));
       }
+      if (error) {
+        alert((editandoId ? "Error al actualizar el registro: " : "Error al guardar registro en Supabase: ") + error.message);
+        return;
+      }
+      alert((editandoId ? "¡Registro ERI modificado y actualizado correctamente en la nube!" : "¡Registro ERI guardado correctamente en la nube!")
+        + (sinLpn ? "\n\nAviso: el Nro LPN no se guardó porque falta la columna nro_lpn en Supabase. Ejecuta el SQL indicado y vuelve a intentar." : ""));
 
       limpiarFormularioRegistro();
       tabSwitch('historial');
@@ -1137,6 +1198,7 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
       document.getElementById('reg_carga_lpn').removeAttribute('readonly');
       
       document.getElementById('reg_descripcion').value = '';
+      document.getElementById('reg_nro_lpn').value = '';
       document.getElementById('reg_cantidad_enviada').value = '';
       document.getElementById('reg_bodega').value = '';
       document.getElementById('reg_ubicacion_picking').value = '';
@@ -1176,6 +1238,7 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
       document.getElementById('reg_descripcion').value = data.descripcion || '';
       document.getElementById('reg_cantidad_enviada').value = data.cantidad_enviada || 0;
       document.getElementById('reg_bodega').value = data.bodega || '';
+      document.getElementById('reg_nro_lpn').value = data.nro_lpn || '';
       document.getElementById('reg_ubicacion_picking').value = data.ubicacion_picking || '';
       document.getElementById('reg_usuario_picking').value = data.usuario_picking || '';
       document.getElementById('reg_fecha_picking').value = data.fecha_picking ? data.fecha_picking.substring(0, 10) : '';
@@ -1211,10 +1274,10 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
 
     async function renderTablaHistorial() {
       const tbody = document.getElementById('tbody-historial');
-      tbody.innerHTML = '<tr><td colspan="13" class="p-4 text-center text-slate-400">Cargando registros desde Supabase Cloud...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="15" class="p-4 text-center text-slate-400">Cargando registros desde Supabase Cloud...</td></tr>';
 
       if (!supabaseClient) {
-        tbody.innerHTML = '<tr><td colspan="13" class="p-4 text-center text-amber-400">Conecte Supabase para visualizar el historial.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="p-4 text-center text-amber-400">Conecte Supabase para visualizar el historial.</td></tr>';
         return;
       }
 
@@ -1229,17 +1292,17 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
       const { data, error } = await query;
 
       if (error) {
-        tbody.innerHTML = `<tr><td colspan="13" class="p-4 text-center text-rose-400">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="15" class="p-4 text-center text-rose-400">Error: ${error.message}</td></tr>`;
         return;
       }
 
       const search = document.getElementById('filter_search').value.toLowerCase().trim();
       const filtrados = (data || []).filter(r => {
-        return !search || (r.codigo && r.codigo.toLowerCase().includes(search)) || (r.nro_dirca && r.nro_dirca.toLowerCase().includes(search));
+        return !search || [r.codigo, r.nro_dirca, r.nro_lpn, r.nro_carga_lpn, r.descripcion].some(v => v && String(v).toLowerCase().includes(search));
       });
 
       if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" class="p-4 text-center text-slate-500">No se encontraron registros en el historial.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="15" class="p-4 text-center text-slate-500">No se encontraron registros en el historial.</td></tr>`;
         return;
       }
 
@@ -1250,7 +1313,9 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
         tr.innerHTML = `
           <td class="p-3.5 font-mono">${row.fecha_registro ? row.fecha_registro.substring(0, 10) : ''}</td>
           <td class="p-3.5 font-bold text-violet-400">${row.codigo || ''}</td>
+          <td class="p-3.5 min-w-[200px] max-w-[280px]" title="${escH(row.descripcion || '')}">${escH(row.descripcion || '')}</td>
           <td class="p-3.5 font-mono">${row.nro_carga_lpn || ''}</td>
+          <td class="p-3.5 font-mono text-cyan-300">${escH(row.nro_lpn || '')}</td>
           <td class="p-3.5">${row.bodega || ''}</td>
           <td class="p-3.5 font-mono">${row.ubicacion_picking || ''}</td>
           <td class="p-3.5">${row.usuario_picking || ''}</td>
@@ -1427,7 +1492,7 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
       if (error) { fxMsg(fxErr(error)); return; }
       delete FOTOS[u]; fxGaleria(); renderRanking(); fxMsg('Foto quitada de ' + u + '.', true);
     }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { cerrarModal('modalUsuario'); cerrarModal('modalFotos'); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { cerrarModal('modalUsuario'); cerrarModal('modalFotos'); cerrarModal('modalPicking'); } });
 
     async function renderDashboardCharts() {
       if (!supabaseClient) return;
@@ -1751,6 +1816,19 @@ Se guardaron ${totalFilas} registros de forma acumulativa.`);
         <div id="fx_gal_t" class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2"></div>
         <div id="fx_gal" class="flex flex-wrap gap-2"></div>
       </div>
+    </div>
+  </div>
+
+  <div id="modalPicking" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/65">
+    <div class="glow-card w-full max-w-lg rounded-2xl p-5 max-h-[90vh] overflow-y-auto custom-scrollbar" role="dialog" aria-modal="true">
+      <div class="flex justify-between items-start gap-3 mb-1">
+        <h3 id="pk_titulo" class="text-base font-extrabold text-white"></h3>
+        <button type="button" onclick="cerrarModal('modalPicking')" aria-label="Cerrar" class="text-slate-400 hover:text-white text-xl px-2">✕</button>
+      </div>
+      <p id="pk_info" class="text-xs text-slate-400 mb-1"></p>
+      <p class="text-xs text-slate-400 mb-4">Elige el registro que corresponde para completar los campos.</p>
+      <div id="pk_lista" class="space-y-2.5 mb-4"></div>
+      <button type="button" onclick="pickerManual()" class="text-xs font-bold text-slate-300 hover:text-white underline underline-offset-4">Ninguno: llenar manualmente</button>
     </div>
   </div>
 </body>
