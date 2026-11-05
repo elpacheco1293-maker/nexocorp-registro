@@ -215,7 +215,7 @@
               </h3>
               <span id="count-picking" class="text-[10px] bg-purple-500/10 text-purple-300 px-2.5 py-1 rounded-full border border-purple-500/20 font-mono">Consultando...</span>
             </div>
-            <p class="text-[11px] text-slate-400 mb-4">Columnas: <span class="text-slate-300 font-mono">codigo, nro_carga, nro_lpn, descripcion, cantidad_enviada, bodega, ubicacion_picking, usuario_picking, fecha_picking</span></p>
+            <p class="text-[11px] text-slate-400 mb-4">Columnas: <span class="text-slate-300 font-mono">codigo, nro_carga, nro_lpn, descripcion, cantidad_enviada, bodega, ubicacion_picking, usuario_picking, fecha_picking</span><br><span class="text-cyan-300">También acepta directo el archivo del WMS (CSV): reconoce Nro LPN, Nro Carga, Cod Alternat, Descripcion, Sucursal Dest, Cant Empacada, Ubicación de selección, Detail Pick User y Detail Picked Time.</span></p>
 
             <label class="block border-2 border-dashed border-purple-500/30 hover:border-purple-400 rounded-xl p-4 text-center cursor-pointer transition bg-purple-950/20 group">
               <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileUpload(event, 'bd_carga_picking')">
@@ -734,9 +734,17 @@
       reader.onload = async function(e) {
         try {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.SheetNames[0];
-          const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+          let rawRows;
+          if (/\.(csv|txt)$/i.test(file.name)) {
+            // Archivo de texto (por ejemplo el que baja directo del WMS, separado por ;)
+            let texto = new TextDecoder('utf-8').decode(data);
+            if (texto.includes('\uFFFD')) texto = new TextDecoder('windows-1252').decode(data);
+            rawRows = parsearCSV(texto);
+          } else {
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.SheetNames[0];
+            rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+          }
 
           if (rawRows.length === 0) return alert("El archivo seleccionado está vacío.");
 
@@ -747,6 +755,33 @@
         }
       };
       reader.readAsArrayBuffer(file);
+    }
+
+    // Lee un CSV/TXT: detecta el separador (; , tab |), respeta comillas y quita el BOM
+    function parsearCSV(texto) {
+      if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+      const primera = texto.split(/\r?\n/, 1)[0] || '';
+      const cuenta = c => primera.split(c).length - 1;
+      const delim = [';', ',', '\t', '|'].sort((a, b) => cuenta(b) - cuenta(a))[0];
+      const filas = []; let fila = [], campo = '', enComillas = false;
+      for (let i = 0; i < texto.length; i++) {
+        const ch = texto[i];
+        if (enComillas) {
+          if (ch === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else enComillas = false; }
+          else campo += ch;
+        } else if (ch === '"' && campo === '') { enComillas = true; }
+        else if (ch === delim) { fila.push(campo); campo = ''; }
+        else if (ch === '\n' || ch === '\r') {
+          if (ch === '\r' && texto[i + 1] === '\n') i++;
+          fila.push(campo); campo = ''; filas.push(fila); fila = [];
+        } else campo += ch;
+      }
+      if (campo !== '' || fila.length) { fila.push(campo); filas.push(fila); }
+      if (!filas.length) return [];
+      const enc = filas.shift().map(h => String(h).trim());
+      return filas.filter(f => f.some(c => String(c).trim() !== '')).map(f => {
+        const o = {}; enc.forEach((h, j) => { if (h) o[h] = f[j] === undefined ? '' : f[j]; }); return o;
+      });
     }
 
     function parseExcelDate(val) {
@@ -772,11 +807,18 @@
           }
         }
       }
+      // Fecha escrita día/mes/año, con o sin hora (ej. 04/11/2026 09:14:20) -> AAAA-MM-DD
+      const m = str.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);
+      if (m) {
+        let d = m[1], mo = m[2];
+        if (+mo > 12 && +d <= 12) { const t = d; d = mo; mo = t; }
+        return `${m[3]}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
       return str.substring(0, 10) || null;
     }
 
     function normalizarColumnas(rows, tabla) {
-      return rows.map(r => {
+      const out = rows.map(r => {
         const keys = Object.keys(r);
         const findVal = (...aliases) => {
           const limpiarStr = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '');
@@ -785,6 +827,13 @@
             if (match && r[match] !== undefined && r[match] !== null) return r[match];
           }
           return null;
+        };
+
+        // El WMS entrega algunos códigos como ="7751493010153": se deja solo el valor
+        const limpiarCelda = (v) => {
+          const t = String(v == null ? '' : v).trim();
+          const mm = t.match(/^=\s*"(.*)"$/);
+          return mm ? mm[1].trim() : t;
         };
 
         const parseNumber = (val) => {
@@ -804,15 +853,15 @@
           };
         } else if (tabla === 'bd_carga_picking') {
           return {
-            codigo: String(findVal('codigo', 'cod') || '').trim(),
-            nro_carga: String(findVal('nrocarga', 'carga') || '').trim(),
-            nro_lpn: String(findVal('nrolpn', 'lpn') || '').trim(),
+            codigo: limpiarCelda(findVal('codigo', 'cod', 'codalternat', 'codigoalternativo')),
+            nro_carga: limpiarCelda(findVal('nrocarga', 'carga')),
+            nro_lpn: limpiarCelda(findVal('nrolpn', 'lpn')),
             descripcion: String(findVal('descripcion', 'desc') || '').trim(),
-            cantidad_enviada: parseNumber(findVal('cantidadenviada', 'cant')),
-            bodega: String(findVal('bodega') || '').trim(),
-            ubicacion_picking: String(findVal('ubicacionpicking', 'ubicacion') || '').trim(),
-            usuario_picking: String(findVal('usuariopicking', 'usuario') || '').trim(),
-            fecha_picking: parseExcelDate(findVal('fechapicking', 'fecha', 'pickdate'))
+            cantidad_enviada: parseNumber(findVal('cantidadenviada', 'cantempacada', 'cantidadempacada', 'cant', 'cantidadactual', 'cantasig')),
+            bodega: String(findVal('bodega', 'sucursaldest', 'sucursaldestino', 'sucursal') || '').trim(),
+            ubicacion_picking: limpiarCelda(findVal('ubicacionpicking', 'ubicacion', 'ubicaciondeseleccion')),
+            usuario_picking: limpiarCelda(findVal('usuariopicking', 'usuario', 'detailpickuser')),
+            fecha_picking: parseExcelDate(findVal('fechapicking', 'fecha', 'pickdate', 'detailpickedtime'))
           };
         } else if (tabla === 'bd_dirca') {
           return {
@@ -824,6 +873,42 @@
           };
         }
       });
+      // Se descartan filas vacías del archivo de picking
+      return tabla === 'bd_carga_picking' ? out.filter(r => r && r.codigo && r.nro_carga) : out;
+    }
+
+    // ---------- Evita duplicar filas de picking al cargar un archivo ----------
+    // Una fila se considera ya cargada si coincide en código, carga, LPN, ubicación, usuario, fecha y cantidad.
+    // Si el archivo trae la misma fila 2 veces y en la base hay 1, se agrega 1 (se respetan los repetidos reales).
+    function claveFilaPicking(r) {
+      const t = x => String(x == null ? '' : x).trim().toUpperCase();
+      return [t(r.codigo), t(r.nro_carga), t(r.nro_lpn), t(r.ubicacion_picking), t(r.usuario_picking),
+              String(r.fecha_picking || '').substring(0, 10), String(Number(r.cantidad_enviada) || 0)].join('|');
+    }
+    async function filtrarPickingNuevo(filas) {
+      const cargas = [...new Set(filas.map(f => f.nro_carga).filter(Boolean))];
+      const existentes = new Map();
+      const cols = 'codigo,nro_carga,nro_lpn,ubicacion_picking,usuario_picking,fecha_picking,cantidad_enviada';
+      for (let i = 0; i < cargas.length; i += 40) {
+        const chunk = cargas.slice(i, i + 40);
+        let desde = 0, ordenId = true;
+        for (;;) {
+          let q = supabaseClient.from('bd_carga_picking').select(cols).in('nro_carga', chunk);
+          q = ordenId ? q.order('id', { ascending: true }) : q.order('nro_carga').order('nro_lpn').order('codigo');
+          let { data, error } = await q.range(desde, desde + 999);
+          if (error && ordenId) { ordenId = false; continue; }   // la tabla no tiene columna id: ordena por otras columnas
+          if (error) throw error;
+          (data || []).forEach(r => { const k = claveFilaPicking(r); existentes.set(k, (existentes.get(k) || 0) + 1); });
+          if (!data || data.length < 1000) break;
+          desde += 1000;
+        }
+      }
+      const nuevas = []; let omitidas = 0;
+      filas.forEach(f => {
+        const k = claveFilaPicking(f), n = existentes.get(k) || 0;
+        if (n > 0) { existentes.set(k, n - 1); omitidas++; } else nuevas.push(f);
+      });
+      return { nuevas, omitidas };
     }
 
     async function enviarLotesASupabaseCloud(tabla, filas) {
@@ -836,6 +921,26 @@
       pContainer.classList.remove('hidden');
       pBar.style.width = '0%';
       pPercent.textContent = '0%';
+
+      let omitidas = 0;
+      if (tabla === 'bd_carga_picking') {
+        pCounter.textContent = 'Revisando qué filas ya existen...';
+        try {
+          const r = await filtrarPickingNuevo(filas);
+          filas = r.nuevas; omitidas = r.omitidas;
+        } catch (e) {
+          console.error('No se pudo revisar duplicados:', e);
+          if (!confirm('No se pudo revisar si hay filas repetidas (' + (e.message || e) + ').\n\n¿Cargar el archivo completo de todos modos?')) {
+            pContainer.classList.add('hidden');
+            return;
+          }
+        }
+        if (filas.length === 0) {
+          pContainer.classList.add('hidden');
+          alert('No hay filas nuevas: las ' + omitidas + ' filas del archivo ya estaban cargadas. No se duplicó nada.');
+          return;
+        }
+      }
 
       const BATCH_SIZE = 500;
       const totalFilas = filas.length;
@@ -868,7 +973,7 @@
 
       setTimeout(() => {
         alert(`¡Carga de documentos exitosa en Supabase Cloud!
-Se guardaron ${totalFilas} registros de forma acumulativa.`);
+Se guardaron ${totalFilas} registros nuevos de forma acumulativa.${omitidas ? `\n${omitidas} filas ya existían y se omitieron (sin duplicar).` : ''}`);
         pContainer.classList.add('hidden');
       }, 200);
     }
